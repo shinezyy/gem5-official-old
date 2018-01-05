@@ -1,0 +1,206 @@
+400.perlbench (3 inputs)
+
+reference inputs:
+
+perlbench -I./lib checkspam.pl 2500 5 25 11 150 1 1 1 1 > perlbench.ref.checkspam.out 2> perlbench.ref.checkspam.err
+
+perlbench -I./lib diffmail.pl 4 800 10 17 19 300 > perlbench.ref.diffmail.out 2> perlbench.ref.diffmail.err
+
+perlbench -I./lib splitmail.pl 1600 12 26 16 4500 > perlbench.ref.splitmail.out 2> perlbench.ref.splitmail.err
+
+401.bzip2 (6 inputs)
+
+reference inputs:
+
+bzip2 input.source 280 > bzip2.ref.source.out 2> bzip2.ref.source.err
+
+bzip2 chicken.jpg 30 > bzip2.ref.chicken.out 2> bzip2.ref.chicken.err
+
+bzip2 liberty.jpg 30 > bzip2.ref.liberty.out 2> bzip2.ref.liberty.err
+
+bzip2 input.program 280 > bzip2.ref.program.out 2> bzip2.ref.program.err
+
+bzip2 text.html 280 > bzip2.ref.text.out 2> bzip2.ref.text.err
+
+bzip2 input.combined 200 > bzip2.ref.combined.out 2> bzip2.ref.combined.err
+
+403.gcc (9 inputs)
+
+reference inputs:
+
+gcc 166.i -o 166.s > gcc.ref.166.out 2> gcc.ref.166.err
+
+gcc 200.i -o 200.s > gcc.ref.200.out 2> gcc.ref.200.err
+
+gcc c-typeck.i -o c-typeck.s > gcc.ref.c-typeck.out 2> gcc.ref.c-typeck.err
+
+gcc cp-decl.i -o cp-decl.s > gcc.ref.cp-decl.out 2> gcc.ref.cp-decl.err
+
+gcc expr.i -o expr.s > gcc.ref.expr.out 2> gcc.ref.expr.err
+
+gcc expr2.i -o expr2.s > gcc.ref.expr2.out 2> gcc.ref.expr2.err
+
+gcc g23.i -o g23.s > gcc.ref.g23.out 2> gcc.ref.g23.err
+
+gcc s04.i -o s04.s > gcc.ref.s04.out 2> gcc.ref.s04.err
+
+gcc scilab.i -o scilab.s > gcc.ref.scilab.out 2> gcc.ref.scilab.err
+
+410.bwaves (1 input)
+
+reference inputs:
+bwaves > bwaves.ref.out 2> bwaves.ref.err
+
+416.gamess (3 inputs)
+
+reference inputs:
+
+gamess < cytosine.2.config > gamess.ref.cytosine.out 2> gamess.ref.cytosine.err
+
+gamess < h2ocu2+.gradient.config > gamess.ref.h2ocu2+.out 2> gamess.ref.h2ocu2+.err
+
+gamess < triazolium.config > gamess.ref.triazolium.out 2> gamess.ref.triazolium.err
+
+429.mcf (1 input)
+
+reference inputs:
+mcf inp.in > mcf.ref.out 2> mcf.ref.err
+
+433.milc (1 input)
+
+reference inputs:
+milc < su3imp.in > milc.ref.out 2> milc.ref.err
+
+434.zeusmp (1 input)
+
+reference inputs:
+zeusmp > zeusmp.ref.out 2> zeusmp.ref.err
+
+435.gromacs (1 input)
+
+reference inputs:
+gromacs -silent -deffnm gromacs.tpr -nice 0 > gromacs.ref.out 2> gromacs.ref.err
+
+436.cactusADM (1 input)
+
+reference inputs:
+cactusADM benchADM.par > cactusADM.ref.out 2> cactusADM.ref.err
+
+437.leslie3d (1 input)
+
+reference inputs:
+leslie3d < leslie3d.in > leslie3d.ref.out 2> leslie3d.ref.err
+
+444.namd (1 input)
+
+reference inputs:
+namd --input namd.input --iterations 38 --output namd.out > namd.ref.out 2> namd.ref.err
+
+445.gobmk (5 inputs)
+
+reference inputs:
+
+gobmk --quiet --mode gtp < 13x13.tst > gobmk.ref.13x13.out 2> gobmk.ref.13x13.err
+
+gobmk --quiet --mode gtp < nngs.tst > gobmk.reff.nngs.out 2> gobmk.ref.nngs.err
+
+gobmk --quiet --mode gtp < score2.tst > gobmk.ref.score2.out 2> gobmk.ref.score2.err
+
+gobmk --quiet --mode gtp < trevorc.tst > gobmk.ref.trevorc.out 2> gobmk.ref.trevorc.err
+
+gobmk --quiet --mode gtp < trevord.tst > gobmk.ref.trevord.out 2> gobmk.ref.trevord.err
+
+447.dealII (1 input)
+
+reference inputs:
+dealII 23 > dealII.ref.out 2> dealII.ref.err
+
+450.soplex (2 inputs)
+
+reference inputs:
+
+soplex -s1 -e -m45000 pds-50.mps > soplex.ref.pds-50.out 2> soplex.ref.pds-50.err
+
+soplex -m3500 ref.mps > soplex.ref.ref.out 2> soplex.ref.ref.err
+
+453.povray (1 input)
+
+reference inputs:
+povray SPEC-benchmark-ref.ini > povray.ref.out 2> povray.ref.err
+
+454.calculix (1 input)
+
+reference inputs:
+calculix -i hyperviscoplastic > calculix.ref.out 2> calculix.ref.err
+
+456.hmmer (2 inputs)
+
+reference inputs:
+
+hmmer nph3.hmm swiss41 > hmmer.ref.nph3.out 2> hmmer.ref.nph3.err
+
+hmmer --fixed 0 --mean 500 --num 500000 --sd 350 --seed 0 retro.hmm > hmmer.ref.retro.out 2> hmmer.ref.retro.err
+
+458.sjeng (1 input)
+
+reference inputs:
+sjeng ref.txt > sjeng.ref.out 2> sjeng.ref.err
+
+459.GemsFDTD (1 input)
+
+reference inputs:
+GemsFDTD > GemsFDTD.ref.out 2> GemsFDTD.ref.err
+
+462.libquantum (1 input)
+
+reference inputs:
+libquantum 1397 8 > libquantum.ref.out 2> libquantum.ref.err
+
+464.h264ref (3 inputs)
+
+reference inputs:
+
+h264ref -d foreman_ref_encoder_baseline.cfg > h264ref.ref.foreman_baseline.out 2> h264ref.ref.foreman_baseline.err
+
+h264ref -d foreman_ref_encoder_main.cfg > h264ref.ref.foreman_main.out 2> h264ref.ref.foreman_main.err
+
+h264ref -d sss_encoder_main.cfg > h264ref.ref.sss.out 2> h264ref.ref.sss.err
+
+465.tonto (1 input)
+
+reference inputs:
+tonto > tonto.ref.out 2> tonto.ref.err
+
+470.lbm (1 input)
+
+reference inputs:
+lbm 3000 reference.dat 0 0 100_100_130_ldc.of > lbm.ref.out 2> lbm.ref.err
+
+471.omnetpp (1 input)
+
+reference inputs:
+omnetpp omnetpp.ini > omnetpp.ref.log 2> omnetpp.ref.err
+
+473.astar (2 inputs)
+
+reference inputs:
+
+astar BigLakes2048.cfg > astar.ref.BigLakes2048.out 2> astar.ref.BigLakes2048.err
+
+astar rivers.cfg > astar.ref.rivers.out 2> astar.ref.rivers.err
+
+481.wrf (1 input)
+
+reference inputs:
+wrf > wrf.ref.out 2> wrf.ref.err
+
+482.sphinx3 (1 input)
+
+reference inputs:
+sphinx_livepretend ctlfile . args.an4 > sphinx3.ref.out 2> sphinx3.ref.err
+
+483.xalancbmk (1 input)
+
+reference inputs:
+Xalan -v t5.xml xalanc.xsl > xalancbmk.ref.out 2> xalancbmk.ref.err
+
