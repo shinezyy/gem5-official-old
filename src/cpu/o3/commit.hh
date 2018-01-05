@@ -521,7 +521,7 @@ class DefaultCommit
     Stats::Scalar commitEligibleSamples;
 
 private:
-    std::array<bool, Impl::MaxThreads> skipThisCycle{};
+    std::array<bool, Impl::MaxThreads> skipThisCycle;
 };
 
 #endif // __CPU_O3_COMMIT_HH__
