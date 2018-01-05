@@ -86,4 +86,4 @@ $GEM5_DIR/build/$arch/gem5.$gem5_ver\
     --benchmark_stdout=$output_dir\
     --benchmark_stderr=$output_dir\
     --cpu-type='AtomicSimpleCPU' \
-    > $stdout_dir/stdout/nohup.$benchmark 2>&1 &
+    > $stdout_dir/nohup_out/nohup.$benchmark 2>&1 &
