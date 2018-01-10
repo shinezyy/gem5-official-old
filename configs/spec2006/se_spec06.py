@@ -193,7 +193,7 @@ if options.bench:
             print >>sys.stderr, "Unable to find workload for %s: %s" % (
                     buildEnv['TARGET_ISA'], app)
             sys.exit(1)
-elif options.cmd:
+elif options.cmd or options.spec_2006_bench:
     multiprocesses, numThreads = get_processes(options)
 else:
     print >> sys.stderr, "No workload specified. Exiting!\n"
