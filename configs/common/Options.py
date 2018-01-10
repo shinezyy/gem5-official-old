@@ -126,10 +126,31 @@ def addNoISAOptions(parser):
                       help="Run to the specified absolute simulated time in "
                       "seconds")
 
+
+def addSpec2006Options(parser):
+    parser.add_option("-b", "--benchmark",\
+            type="string", default="",\
+            help="The SPEC benchmark to be loaded."
+            )
+    parser.add_option("--benchmark-stdout",\
+            type="string", default="",\
+            help="Absolute path for stdout redirection for the benchmark."
+            )
+    parser.add_option("--benchmark-stderr",
+            type="string", default="",\
+            help="Absolute path for stderr redirection for the benchmark."
+            )
+    parser.add_option("--spec-2006-bench",
+            action="store_true",
+            help="use spec 2006 benchmarks as workloads"
+            )
+
+
 # Add common options that assume a non-NULL ISA.
 def addCommonOptions(parser):
     # start by adding the base options that do not assume an ISA
     addNoISAOptions(parser)
+    addSpec2006Options(parser)
 
     # system options
     parser.add_option("--list-cpu-types",
@@ -370,3 +391,5 @@ def addFSOptions(parser):
     parser.add_option("--command-line-file", action="store",
                       default=None, type="string",
                       help="File with a template for the kernel command line")
+
+
