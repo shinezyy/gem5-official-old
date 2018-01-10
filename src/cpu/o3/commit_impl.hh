@@ -1455,9 +1455,10 @@ DefaultCommit<Impl>::getCommittingThread()
         assert(!activeThreads->empty());
         ThreadID tid = activeThreads->front();
 
-        if (commitStatus[tid] == Running ||
+        if ((commitStatus[tid] == Running ||
             commitStatus[tid] == Idle ||
-            commitStatus[tid] == FetchTrapPending) {
+            commitStatus[tid] == FetchTrapPending) &&
+                !skipThisCycle[tid]) {
             return tid;
         } else {
             return InvalidThreadID;
