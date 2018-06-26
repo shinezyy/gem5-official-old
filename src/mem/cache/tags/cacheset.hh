@@ -49,6 +49,9 @@
 #define __MEM_CACHE_TAGS_CACHESET_HH__
 
 #include <cassert>
+#include <vector>
+
+#include "base/types.hh"
 
 /**
  * An associative set of cache blocks.
@@ -61,7 +64,7 @@ class CacheSet
     int assoc;
 
     /** Cache blocks in this set, maintained in LRU order 0 = MRU. */
-    Blktype **blks;
+    std::vector<Blktype*> blks;
 
     /**
      * Find a block matching the tag in this set.

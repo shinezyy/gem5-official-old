@@ -62,7 +62,7 @@ unameFunc(SyscallDesc *desc, int callnum, Process *process,
 
     strcpy(name->sysname, "Linux");
     strcpy(name->nodename, "sim.gem5.org");
-    strcpy(name->release, "3.0.0");
+    strcpy(name->release, "3.2.0");
     strcpy(name->version, "#1 Mon Aug 18 11:32:15 EDT 2003");
     strcpy(name->machine, "x86_64");
 
@@ -306,16 +306,16 @@ static SyscallDesc syscallDescs64[] = {
     /*  83 */ SyscallDesc("mkdir", unimplementedFunc),
     /*  84 */ SyscallDesc("rmdir", unimplementedFunc),
     /*  85 */ SyscallDesc("creat", unimplementedFunc),
-    /*  86 */ SyscallDesc("link", unimplementedFunc),
+    /*  86 */ SyscallDesc("link", linkFunc),
     /*  87 */ SyscallDesc("unlink", unlinkFunc),
-    /*  88 */ SyscallDesc("symlink", unimplementedFunc),
+    /*  88 */ SyscallDesc("symlink", symlinkFunc),
     /*  89 */ SyscallDesc("readlink", readlinkFunc),
     /*  90 */ SyscallDesc("chmod", unimplementedFunc),
     /*  91 */ SyscallDesc("fchmod", unimplementedFunc),
     /*  92 */ SyscallDesc("chown", unimplementedFunc),
     /*  93 */ SyscallDesc("fchown", unimplementedFunc),
     /*  94 */ SyscallDesc("lchown", unimplementedFunc),
-    /*  95 */ SyscallDesc("umask", unimplementedFunc),
+    /*  95 */ SyscallDesc("umask", umaskFunc),
     /*  96 */ SyscallDesc("gettimeofday", gettimeofdayFunc<X86Linux64>),
     /*  97 */ SyscallDesc("getrlimit", getrlimitFunc<X86Linux64>),
     /*  98 */ SyscallDesc("getrusage", getrusageFunc<X86Linux64>),
@@ -358,7 +358,7 @@ static SyscallDesc syscallDescs64[] = {
     /* 135 */ SyscallDesc("personality", unimplementedFunc),
     /* 136 */ SyscallDesc("ustat", unimplementedFunc),
     /* 137 */ SyscallDesc("statfs", statfsFunc<X86Linux64>),
-    /* 138 */ SyscallDesc("fstatfs", unimplementedFunc),
+    /* 138 */ SyscallDesc("fstatfs", fstatfsFunc<X86Linux64>),
     /* 139 */ SyscallDesc("sysfs", unimplementedFunc),
     /* 140 */ SyscallDesc("getpriority", unimplementedFunc),
     /* 141 */ SyscallDesc("setpriority", ignoreFunc),
@@ -522,7 +522,7 @@ static SyscallDesc syscallDescs64[] = {
     /* 299 */ SyscallDesc("recvmmsg", unimplementedFunc),
     /* 300 */ SyscallDesc("fanotify_init", unimplementedFunc),
     /* 301 */ SyscallDesc("fanotify_mark", unimplementedFunc),
-    /* 302 */ SyscallDesc("prlimit64", unimplementedFunc),
+    /* 302 */ SyscallDesc("prlimit64", prlimitFunc<X86Linux64>),
     /* 303 */ SyscallDesc("name_to_handle_at", unimplementedFunc),
     /* 304 */ SyscallDesc("open_by_handle_at", unimplementedFunc),
     /* 305 */ SyscallDesc("clock_adjtime", unimplementedFunc),
@@ -609,7 +609,7 @@ static SyscallDesc syscallDescs32[] = {
     /*  57 */ SyscallDesc("setpgid", setpgidFunc),
     /*  58 */ SyscallDesc("ulimit", unimplementedFunc),
     /*  59 */ SyscallDesc("oldolduname", unimplementedFunc),
-    /*  60 */ SyscallDesc("umask", unimplementedFunc),
+    /*  60 */ SyscallDesc("umask", umaskFunc),
     /*  61 */ SyscallDesc("chroot", unimplementedFunc),
     /*  62 */ SyscallDesc("ustat", unimplementedFunc),
     /*  63 */ SyscallDesc("dup2", dup2Func),

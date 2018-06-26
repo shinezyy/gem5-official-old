@@ -57,7 +57,7 @@ using namespace std;
 TrafficGen::TrafficGen(const TrafficGenParams* p)
     : MemObject(p),
       system(p->system),
-      masterID(system->getMasterId(name())),
+      masterID(system->getMasterId(this)),
       configFile(p->config_file),
       elasticReq(p->elastic_req),
       progressCheck(p->progress_check),
@@ -213,7 +213,6 @@ TrafficGen::update()
                 warn("%s suppressed %d packets with non-memory addresses\n",
                      name(), numSuppressed);
 
-            delete pkt->req;
             delete pkt;
             pkt = nullptr;
         }
@@ -575,7 +574,6 @@ TrafficGen::regStats()
 bool
 TrafficGen::TrafficGenPort::recvTimingResp(PacketPtr pkt)
 {
-    delete pkt->req;
     delete pkt;
 
     return true;

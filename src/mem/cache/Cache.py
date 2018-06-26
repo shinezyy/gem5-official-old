@@ -1,4 +1,4 @@
-# Copyright (c) 2012-2013, 2015 ARM Limited
+# Copyright (c) 2012-2013, 2015, 2018 ARM Limited
 # All rights reserved.
 #
 # The license below extends only to copyright in the software and shall
@@ -43,7 +43,14 @@ from m5.params import *
 from m5.proxy import *
 from MemObject import MemObject
 from Prefetcher import BasePrefetcher
+from ReplacementPolicies import *
 from Tags import *
+
+
+# Enum for cache clusivity, currently mostly inclusive or mostly
+# exclusive.
+class Clusivity(Enum): vals = ['mostly_incl', 'mostly_excl']
+
 
 class BaseCache(MemObject):
     type = 'BaseCache'
@@ -56,6 +63,9 @@ class BaseCache(MemObject):
     tag_latency = Param.Cycles("Tag lookup latency")
     data_latency = Param.Cycles("Data access latency")
     response_latency = Param.Cycles("Latency for the return path on a miss");
+
+    warmup_percentage = Param.Percent(0,
+        "Percentage of tags to be touched to warm up the cache")
 
     max_miss_count = Param.Counter(0,
         "Number of misses to handle before calling exit")
@@ -71,7 +81,10 @@ class BaseCache(MemObject):
     prefetch_on_access = Param.Bool(False,
          "Notify the hardware prefetcher on every access (not just misses)")
 
-    tags = Param.BaseTags(LRU(), "Tag store (replacement policy)")
+    tags = Param.BaseTags(BaseSetAssoc(), "Tag store")
+    replacement_policy = Param.BaseReplacementPolicy(LRURP(),
+        "Replacement policy")
+
     sequential_access = Param.Bool(False,
         "Whether to access tags and data sequentially")
 
@@ -83,13 +96,13 @@ class BaseCache(MemObject):
 
     system = Param.System(Parent.any, "System we belong to")
 
-# Enum for cache clusivity, currently mostly inclusive or mostly
-# exclusive.
-class Clusivity(Enum): vals = ['mostly_incl', 'mostly_excl']
-
-class Cache(BaseCache):
-    type = 'Cache'
-    cxx_header = 'mem/cache/cache.hh'
+    # Determine if this cache sends out writebacks for clean lines, or
+    # simply clean evicts. In cases where a downstream cache is mostly
+    # exclusive with respect to this cache (acting as a victim cache),
+    # the clean writebacks are essential for performance. In general
+    # this should be set to True for anything but the last-level
+    # cache.
+    writeback_clean = Param.Bool(False, "Writeback clean lines")
 
     # Control whether this cache should be mostly inclusive or mostly
     # exclusive with respect to upstream caches. The behaviour on a
@@ -103,10 +116,17 @@ class Cache(BaseCache):
     clusivity = Param.Clusivity('mostly_incl',
                                 "Clusivity with upstream cache")
 
-    # Determine if this cache sends out writebacks for clean lines, or
-    # simply clean evicts. In cases where a downstream cache is mostly
-    # exclusive with respect to this cache (acting as a victim cache),
-    # the clean writebacks are essential for performance. In general
-    # this should be set to True for anything but the last-level
-    # cache.
-    writeback_clean = Param.Bool(False, "Writeback clean lines")
+
+class Cache(BaseCache):
+    type = 'Cache'
+    cxx_header = 'mem/cache/cache.hh'
+
+
+class NoncoherentCache(BaseCache):
+    type = 'NoncoherentCache'
+    cxx_header = 'mem/cache/noncoherent_cache.hh'
+
+    # This is typically a last level cache and any clean
+    # writebacks would be unnecessary traffic to the main memory.
+    writeback_clean = False
+

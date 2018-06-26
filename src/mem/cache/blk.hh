@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 ARM Limited
+ * Copyright (c) 2012-2018 ARM Limited
  * All rights reserved.
  *
  * The license below extends only to copyright in the software and shall
@@ -48,9 +48,15 @@
 #ifndef __MEM_CACHE_BLK_HH__
 #define __MEM_CACHE_BLK_HH__
 
+#include <cassert>
+#include <cstdint>
+#include <iosfwd>
 #include <list>
+#include <string>
 
 #include "base/printable.hh"
+#include "base/types.hh"
+#include "mem/cache/replacement_policies/base.hh"
 #include "mem/packet.hh"
 #include "mem/request.hh"
 
@@ -76,7 +82,7 @@ enum CacheBlkStatusBits : unsigned {
  * A Basic Cache block.
  * Contains the tag, status, and a pointer to data.
  */
-class CacheBlk
+class CacheBlk : public ReplaceableEntry
 {
   public:
     /** Task Id associated with this block */
@@ -99,7 +105,7 @@ class CacheBlk
     /** The current status of this block. @sa CacheBlockStatusBits */
     State status;
 
-    /** Which curTick() will this block be accessable */
+    /** Which curTick() will this block be accessible */
     Tick whenReady;
 
     /**
@@ -108,15 +114,13 @@ class CacheBlk
      */
     int set, way;
 
-    /** whether this block has been touched */
-    bool isTouched;
-
     /** Number of references to this block since it was brought in. */
     unsigned refCount;
 
     /** holds the source requestor ID for this block. */
     int srcMasterId;
 
+    /** Tick on which the block was inserted in the cache. */
     Tick tickInserted;
 
   protected:
@@ -132,7 +136,7 @@ class CacheBlk
 
         // check for matching execution context, and an address that
         // is within the lock
-        bool matches(const RequestPtr req) const
+        bool matches(const RequestPtr &req) const
         {
             Addr req_low = req->getPaddr();
             Addr req_high = req_low + req->getSize() -1;
@@ -141,7 +145,7 @@ class CacheBlk
         }
 
         // check if a request is intersecting and thus invalidating the lock
-        bool intersects(const RequestPtr req) const
+        bool intersects(const RequestPtr &req) const
         {
             Addr req_low = req->getPaddr();
             Addr req_high = req_low + req->getSize() - 1;
@@ -149,7 +153,7 @@ class CacheBlk
             return (req_low <= highAddr) && (req_high >= lowAddr);
         }
 
-        Lock(const RequestPtr req)
+        Lock(const RequestPtr &req)
             : contextId(req->contextId()),
               lowAddr(req->getPaddr()),
               highAddr(lowAddr + req->getSize() - 1)
@@ -162,17 +166,14 @@ class CacheBlk
     std::list<Lock> lockList;
 
   public:
-
-    CacheBlk()
-        : task_id(ContextSwitchTaskId::Unknown),
-          tag(0), data(0), status(0), whenReady(0),
-          set(-1), way(-1), isTouched(false), refCount(0),
-          srcMasterId(Request::invldMasterId),
-          tickInserted(0)
-    {}
+    CacheBlk() : data(nullptr)
+    {
+        invalidate();
+    }
 
     CacheBlk(const CacheBlk&) = delete;
     CacheBlk& operator=(const CacheBlk&) = delete;
+    virtual ~CacheBlk() {};
 
     /**
      * Checks the write permissions of this block.
@@ -208,10 +209,15 @@ class CacheBlk
     /**
      * Invalidate the block and clear all state.
      */
-    void invalidate()
+    virtual void invalidate()
     {
+        tag = MaxAddr;
+        task_id = ContextSwitchTaskId::Unknown;
         status = 0;
-        isTouched = false;
+        whenReady = MaxTick;
+        refCount = 0;
+        srcMasterId = Request::invldMasterId;
+        tickInserted = MaxTick;
         lockList.clear();
     }
 
@@ -244,6 +250,20 @@ class CacheBlk
     }
 
     /**
+     * Set member variables when a block insertion occurs. Resets reference
+     * count to 1 (the insertion counts as a reference), and touch block if
+     * it hadn't been touched previously. Sets the insertion tick to the
+     * current tick. Does not make block valid.
+     *
+     * @param tag Block address tag.
+     * @param is_secure Whether the block is in secure space or not.
+     * @param src_master_ID The source requestor ID.
+     * @param task_ID The new task ID.
+     */
+    virtual void insert(const Addr tag, const bool is_secure,
+                        const int src_master_ID, const uint32_t task_ID);
+
+    /**
      * Track the fact that a local locked was issued to the
      * block. Invalidate any previous LL to the same address.
      */
@@ -265,7 +285,7 @@ class CacheBlk
      * Clear the any load lock that intersect the request, and is from
      * a different context.
      */
-    void clearLoadLocks(RequestPtr req)
+    void clearLoadLocks(const RequestPtr &req)
     {
         auto l = lockList.begin();
         while (l != lockList.end()) {
@@ -337,7 +357,7 @@ class CacheBlk
         if (!pkt->isLLSC() && lockList.empty())
             return true;
 
-        RequestPtr req = pkt->req;
+        const RequestPtr &req = pkt->req;
 
         if (pkt->isLLSC()) {
             // it's a store conditional... have to check for matching
@@ -373,6 +393,59 @@ class CacheBlk
 };
 
 /**
+ * Special instance of CacheBlk for use with tempBlk that deals with its
+ * block address regeneration.
+ * @sa Cache
+ */
+class TempCacheBlk final : public CacheBlk
+{
+  private:
+    /**
+     * Copy of the block's address, used to regenerate tempBlock's address.
+     */
+    Addr _addr;
+
+  public:
+    TempCacheBlk() : CacheBlk() {}
+    TempCacheBlk(const TempCacheBlk&) = delete;
+    TempCacheBlk& operator=(const TempCacheBlk&) = delete;
+    ~TempCacheBlk() {};
+
+    /**
+     * Invalidate the block and clear all state.
+     */
+    void invalidate() override {
+        CacheBlk::invalidate();
+
+        _addr = MaxAddr;
+    }
+
+    void insert(const Addr addr, const bool is_secure,
+                const int src_master_ID=0, const uint32_t task_ID=0) override
+    {
+        // Set block address
+        _addr = addr;
+
+        // Set secure state
+        if (is_secure) {
+            status = BlkSecure;
+        } else {
+            status = 0;
+        }
+    }
+
+    /**
+     * Get block's address.
+     *
+     * @return addr Address value.
+     */
+    Addr getAddr() const
+    {
+        return _addr;
+    }
+};
+
+/**
  * Simple class to provide virtual print() method on cache blocks
  * without allocating a vtable pointer for every single cache block.
  * Just wrap the CacheBlk object in an instance of this before passing
@@ -386,22 +459,6 @@ class CacheBlkPrintWrapper : public Printable
     virtual ~CacheBlkPrintWrapper() {}
     void print(std::ostream &o, int verbosity = 0,
                const std::string &prefix = "") const;
-};
-
-/**
- * Base class for cache block visitor, operating on the cache block
- * base class (later subclassed for the various tag classes). This
- * visitor class is used as part of the forEachBlk interface in the
- * tag classes.
- */
-class CacheBlkVisitor
-{
-  public:
-
-    CacheBlkVisitor() {}
-    virtual ~CacheBlkVisitor() {}
-
-    virtual bool operator()(CacheBlk &blk) = 0;
 };
 
 #endif //__MEM_CACHE_BLK_HH__

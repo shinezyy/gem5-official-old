@@ -43,6 +43,8 @@
 #          Andreas Hansson
 #          Andreas Sandberg
 
+from __future__ import print_function
+
 import sys
 from types import FunctionType, MethodType, ModuleType
 from functools import wraps
@@ -51,6 +53,9 @@ import inspect
 import m5
 from m5.util import *
 from m5.util.pybind import *
+# Use the pyfdt and not the helper class, because the fdthelper
+# relies on the SimObject definition
+from m5.ext.pyfdt import pyfdt
 
 # Have to import params up top since Param is referenced on initial
 # load (when SimObject class references Param to create a class
@@ -402,7 +407,8 @@ class MetaSimObject(type):
         'cxx_type' : str,
         'cxx_header' : str,
         'type' : str,
-        'cxx_bases' : list,
+        'cxx_base' : (str, type(None)),
+        'cxx_extra_bases' : list,
         'cxx_exports' : list,
         'cxx_param_exports' : list,
     }
@@ -436,8 +442,8 @@ class MetaSimObject(type):
                 value_dict[key] = val
         if 'abstract' not in value_dict:
             value_dict['abstract'] = False
-        if 'cxx_bases' not in value_dict:
-            value_dict['cxx_bases'] = []
+        if 'cxx_extra_bases' not in value_dict:
+            value_dict['cxx_extra_bases'] = []
         if 'cxx_exports' not in value_dict:
             value_dict['cxx_exports'] = cxx_exports
         else:
@@ -729,8 +735,19 @@ module_init(py::module &m_internal)
         code()
         code.dedent()
 
-        bases = [ cls._base.cxx_class ] + cls.cxx_bases if cls._base else \
-                cls.cxx_bases
+        bases = []
+        if 'cxx_base' in cls._value_dict:
+            # If the c++ base class implied by python inheritance was
+            # overridden, use that value.
+            if cls.cxx_base:
+                bases.append(cls.cxx_base)
+        elif cls._base:
+            # If not and if there was a SimObject base, use its c++ class
+            # as this class' base.
+            bases.append(cls._base.cxx_class)
+        # Add in any extra bases that were requested.
+        bases.extend(cls.cxx_extra_bases)
+
         if bases:
             base_str = ", ".join(bases)
             code('py::class_<${{cls.cxx_class}}, ${base_str}, ' \
@@ -765,8 +782,8 @@ module_init(py::module &m_internal)
         try:
             ptypes = [p.ptype for p in params]
         except:
-            print cls, p, p.ptype_str
-            print params
+            print(cls, p, p.ptype_str)
+            print(params)
             raise
 
         class_path = cls._value_dict['cxx_class'].split('::')
@@ -928,7 +945,7 @@ class SimObject(object):
     abstract = True
 
     cxx_header = "sim/sim_object.hh"
-    cxx_bases = [ "Drainable", "Serializable" ]
+    cxx_extra_bases = [ "Drainable", "Serializable" ]
     eventq_index = Param.UInt32(Parent.eventq_index, "Event Queue Index")
 
     cxx_exports = [
@@ -959,7 +976,7 @@ class SimObject(object):
     def enumerateParams(self, flags_dict = {},
                         cmd_line_str = "", access_str = ""):
         if hasattr(self, "_paramEnumed"):
-            print "Cycle detected enumerating params"
+            print("Cycle detected enumerating params")
         else:
             self._paramEnumed = True
             # Scan the children first to pick up all the objects in this SimObj
@@ -1331,8 +1348,8 @@ class SimObject(object):
                 try:
                     value = value.unproxy(self)
                 except:
-                    print "Error in unproxying param '%s' of %s" % \
-                          (param, self.path())
+                    print("Error in unproxying param '%s' of %s" %
+                          (param, self.path()))
                     raise
                 setattr(self, param, value)
 
@@ -1346,30 +1363,31 @@ class SimObject(object):
                 port.unproxy(self)
 
     def print_ini(self, ini_file):
-        print >>ini_file, '[' + self.path() + ']'       # .ini section header
+        print('[' + self.path() + ']', file=ini_file)    # .ini section header
 
         instanceDict[self.path()] = self
 
         if hasattr(self, 'type'):
-            print >>ini_file, 'type=%s' % self.type
+            print('type=%s' % self.type, file=ini_file)
 
         if len(self._children.keys()):
-            print >>ini_file, 'children=%s' % \
-                  ' '.join(self._children[n].get_name() \
-                  for n in sorted(self._children.keys()))
+            print('children=%s' %
+                  ' '.join(self._children[n].get_name()
+                           for n in sorted(self._children.keys())),
+                  file=ini_file)
 
         for param in sorted(self._params.keys()):
             value = self._values.get(param)
             if value != None:
-                print >>ini_file, '%s=%s' % (param,
-                                             self._values[param].ini_str())
+                print('%s=%s' % (param, self._values[param].ini_str()),
+                      file=ini_file)
 
         for port_name in sorted(self._ports.keys()):
             port = self._port_refs.get(port_name, None)
             if port != None:
-                print >>ini_file, '%s=%s' % (port_name, port.ini_str())
+                print('%s=%s' % (port_name, port.ini_str()), file=ini_file)
 
-        print >>ini_file        # blank line between objects
+        print(file=ini_file)        # blank line between objects
 
     # generate a tree of dictionaries expressing all the parameters in the
     # instantiated system for use by scripts that want to do power, thermal
@@ -1494,6 +1512,18 @@ class SimObject(object):
         # order is the same on all hosts
         for (attr, portRef) in sorted(self._port_refs.iteritems()):
             portRef.ccConnect()
+
+    # Default function for generating the device structure.
+    # Can be overloaded by the inheriting class
+    def generateDeviceTree(self, state):
+        return # return without yielding anything
+        yield  # make this function a (null) generator
+
+    def recurseDeviceTree(self, state):
+        for child in self._children.itervalues():
+            for item in child: # For looping over SimObjectVectors
+                for dt in item.generateDeviceTree(state):
+                    yield dt
 
 # Function to provide to C++ so it can look up instances based on paths
 def resolveSimObject(name):

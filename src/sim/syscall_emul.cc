@@ -43,6 +43,7 @@
 #include "base/trace.hh"
 #include "config/the_isa.hh"
 #include "cpu/thread_context.hh"
+#include "dev/net/dist_iface.hh"
 #include "mem/page_table.hh"
 #include "sim/process.hh"
 #include "sim/sim_exit.hh"
@@ -102,6 +103,20 @@ exitImpl(SyscallDesc *desc, int callnum, Process *p, ThreadContext *tc,
     for (auto &system: sys->systemList)
         activeContexts += system->numRunningContexts();
     if (activeContexts == 1) {
+        /**
+         * Even though we are terminating the final thread context, dist-gem5
+         * requires the simulation to remain active and provide
+         * synchronization messages to the switch process. So we just halt
+         * the last thread context and return. The simulation will be
+         * terminated by dist-gem5 in a coordinated manner once all nodes
+         * have signaled their readiness to exit. For non dist-gem5
+         * simulations, readyToExit() always returns true.
+         */
+        if (!DistIface::readyToExit(0)) {
+            tc->halt();
+            return status;
+        }
+
         exitSimLoop("exiting with last active thread context", status & 0xff);
         return status;
     }
@@ -504,6 +519,45 @@ unlinkHelper(SyscallDesc *desc, int num, Process *p, ThreadContext *tc,
     return (result == -1) ? -errno : result;
 }
 
+SyscallReturn
+linkFunc(SyscallDesc *desc, int num, Process *p, ThreadContext *tc)
+{
+    string path;
+    string new_path;
+
+    int index = 0;
+    auto &virt_mem = tc->getMemProxy();
+    if (!virt_mem.tryReadString(path, p->getSyscallArg(tc, index)))
+        return -EFAULT;
+    if (!virt_mem.tryReadString(new_path, p->getSyscallArg(tc, index)))
+        return -EFAULT;
+
+    path = p->fullPath(path);
+    new_path = p->fullPath(new_path);
+
+    int result = link(path.c_str(), new_path.c_str());
+    return (result == -1) ? -errno : result;
+}
+
+SyscallReturn
+symlinkFunc(SyscallDesc *desc, int num, Process *p, ThreadContext *tc)
+{
+    string path;
+    string new_path;
+
+    int index = 0;
+    auto &virt_mem = tc->getMemProxy();
+    if (!virt_mem.tryReadString(path, p->getSyscallArg(tc, index)))
+        return -EFAULT;
+    if (!virt_mem.tryReadString(new_path, p->getSyscallArg(tc, index)))
+        return -EFAULT;
+
+    path = p->fullPath(path);
+    new_path = p->fullPath(new_path);
+
+    int result = symlink(path.c_str(), new_path.c_str());
+    return (result == -1) ? -errno : result;
+}
 
 SyscallReturn
 mkdirFunc(SyscallDesc *desc, int num, Process *p, ThreadContext *tc)

@@ -51,7 +51,7 @@
 AbstractController::AbstractController(const Params *p)
     : MemObject(p), Consumer(this), m_version(p->version),
       m_clusterID(p->cluster_id),
-      m_masterId(p->system->getMasterId(name())), m_is_blocking(false),
+      m_masterId(p->system->getMasterId(this)), m_is_blocking(false),
       m_number_of_TBEs(p->number_of_TBEs),
       m_transitions_per_cycle(p->transitions_per_cycle),
       m_buffer_size(p->buffer_size), m_recycle_latency(p->recycle_latency),
@@ -240,8 +240,8 @@ void
 AbstractController::queueMemoryRead(const MachineID &id, Addr addr,
                                     Cycles latency)
 {
-    RequestPtr req = new Request(addr, RubySystem::getBlockSizeBytes(), 0,
-                                 m_masterId);
+    RequestPtr req = std::make_shared<Request>(
+        addr, RubySystem::getBlockSizeBytes(), 0, m_masterId);
 
     PacketPtr pkt = Packet::createRead(req);
     uint8_t *newData = new uint8_t[RubySystem::getBlockSizeBytes()];
@@ -264,8 +264,8 @@ void
 AbstractController::queueMemoryWrite(const MachineID &id, Addr addr,
                                      Cycles latency, const DataBlock &block)
 {
-    RequestPtr req = new Request(addr, RubySystem::getBlockSizeBytes(), 0,
-                                 m_masterId);
+    RequestPtr req = std::make_shared<Request>(
+        addr, RubySystem::getBlockSizeBytes(), 0, m_masterId);
 
     PacketPtr pkt = Packet::createWrite(req);
     uint8_t *newData = new uint8_t[RubySystem::getBlockSizeBytes()];
@@ -292,7 +292,7 @@ AbstractController::queueMemoryWritePartial(const MachineID &id, Addr addr,
                                             Cycles latency,
                                             const DataBlock &block, int size)
 {
-    RequestPtr req = new Request(addr, size, 0, m_masterId);
+    RequestPtr req = std::make_shared<Request>(addr, size, 0, m_masterId);
 
     PacketPtr pkt = Packet::createWrite(req);
     uint8_t *newData = new uint8_t[size];
@@ -356,7 +356,6 @@ AbstractController::recvTimingResp(PacketPtr pkt)
     }
 
     getMemoryQueue()->enqueue(msg, clockEdge(), cyclesToTicks(Cycles(1)));
-    delete pkt->req;
     delete pkt;
 }
 

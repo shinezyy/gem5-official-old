@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, 2015-2016 ARM Limited
+ * Copyright (c) 2012-2013, 2015-2016, 2018 ARM Limited
  * All rights reserved.
  *
  * The license below extends only to copyright in the software and shall
@@ -48,12 +48,18 @@
 #ifndef __MEM_CACHE_MSHR_HH__
 #define __MEM_CACHE_MSHR_HH__
 
+#include <cassert>
+#include <iosfwd>
 #include <list>
+#include <string>
 
 #include "base/printable.hh"
+#include "base/types.hh"
 #include "mem/cache/queue_entry.hh"
+#include "mem/packet.hh"
+#include "sim/core.hh"
 
-class Cache;
+class BaseCache;
 
 /**
  * Miss Status and handling Register. This class keeps all the information
@@ -162,6 +168,11 @@ class MSHR : public QueueEntry, public Printable
         bool hasUpgrade;
         /** Set when the response should allocate on fill */
         bool allocOnFill;
+        /**
+         * Determine whether there was at least one non-snooping
+         * target coming from another cache.
+         */
+        bool hasFromCache;
 
         TargetList();
 
@@ -176,7 +187,12 @@ class MSHR : public QueueEntry, public Printable
         void updateFlags(PacketPtr pkt, Target::Source source,
                          bool alloc_on_fill);
 
-        void resetFlags() { needsWritable = hasUpgrade = allocOnFill = false; }
+        void resetFlags() {
+            needsWritable = false;
+            hasUpgrade = false;
+            allocOnFill = false;
+            hasFromCache = false;
+        }
 
         /**
          * Goes through the list of targets and uses them to populate
@@ -191,7 +207,8 @@ class MSHR : public QueueEntry, public Printable
          * values.
          */
         bool isReset() const {
-            return !needsWritable && !hasUpgrade && !allocOnFill;
+            return !needsWritable && !hasUpgrade && !allocOnFill &&
+                !hasFromCache;
         }
 
         /**
@@ -217,6 +234,7 @@ class MSHR : public QueueEntry, public Printable
         void replaceUpgrades();
 
         void clearDownstreamPending();
+        void clearDownstreamPending(iterator begin, iterator end);
         bool checkFunctional(PacketPtr pkt);
         void print(std::ostream &os, int verbosity,
                    const std::string &prefix) const;
@@ -235,6 +253,11 @@ class MSHR : public QueueEntry, public Printable
     /** True if we need to get a writable copy of the block. */
     bool needsWritable() const { return targets.needsWritable; }
 
+    bool isCleaning() const {
+        PacketPtr pkt = targets.front().pkt;
+        return pkt->isClean();
+    }
+
     bool isPendingModified() const {
         assert(inService); return pendingModified;
     }
@@ -247,12 +270,32 @@ class MSHR : public QueueEntry, public Printable
         assert(inService); return postDowngrade;
     }
 
-    bool sendPacket(Cache &cache);
+    bool sendPacket(BaseCache &cache);
 
     bool allocOnFill() const {
         return targets.allocOnFill;
     }
+
+    /**
+     * Determine if there are non-deferred requests from other caches
+     *
+     * @return true if any of the targets is from another cache
+     */
+    bool hasFromCache() const {
+        return targets.hasFromCache;
+    }
+
   private:
+    /**
+     * Promotes deferred targets that satisfy a predicate
+     *
+     * Deferred targets are promoted to the target list if they
+     * satisfy a given condition. The operation stops at the first
+     * deferred target that doesn't satisfy the condition.
+     *
+     * @param pred A condition on a Target
+     */
+    void promoteIf(const std::function<bool (Target &)>& pred);
 
     /**
      * Pointer to this MSHR on the ready list.
@@ -352,6 +395,23 @@ class MSHR : public QueueEntry, public Printable
 
     bool promoteDeferredTargets();
 
+    /**
+     * Promotes deferred targets that do not require writable
+     *
+     * Move targets from the deferred targets list to the target list
+     * starting from the first deferred target until the first target
+     * that is a cache maintenance operation or needs a writable copy
+     * of the block
+     */
+    void promoteReadable();
+
+    /**
+     * Promotes deferred targets that do not require writable
+     *
+     * Requests in the deferred target list are moved to the target
+     * list up until the first target that is a cache maintenance
+     * operation or needs a writable copy of the block
+     */
     void promoteWritable();
 
     bool checkFunctional(PacketPtr pkt);

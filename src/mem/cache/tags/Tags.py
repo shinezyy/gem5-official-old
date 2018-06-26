@@ -57,26 +57,42 @@ class BaseTags(ClockedObject):
     data_latency = Param.Cycles(Parent.data_latency,
                                "The data access latency for this cache")
 
+    # Get the warmup percentage from the parent (cache)
+    warmup_percentage = Param.Percent(Parent.warmup_percentage,
+        "Percentage of tags to be touched to warm up the cache")
+
     sequential_access = Param.Bool(Parent.sequential_access,
         "Whether to access tags and data sequentially")
 
 class BaseSetAssoc(BaseTags):
     type = 'BaseSetAssoc'
-    abstract = True
     cxx_header = "mem/cache/tags/base_set_assoc.hh"
+
+    # Get the cache associativity
     assoc = Param.Int(Parent.assoc, "associativity")
 
-class LRU(BaseSetAssoc):
-    type = 'LRU'
-    cxx_class = 'LRU'
-    cxx_header = "mem/cache/tags/lru.hh"
+    # Get replacement policy from the parent (cache)
+    replacement_policy = Param.BaseReplacementPolicy(
+        Parent.replacement_policy, "Replacement policy")
 
-class RandomRepl(BaseSetAssoc):
-    type = 'RandomRepl'
-    cxx_class = 'RandomRepl'
-    cxx_header = "mem/cache/tags/random_repl.hh"
+class SectorTags(BaseTags):
+    type = 'SectorTags'
+    cxx_header = "mem/cache/tags/sector_tags.hh"
+
+    # Get the cache associativity
+    assoc = Param.Int(Parent.assoc, "associativity")
+
+    # Number of sub-sectors (data blocks) per sector
+    num_blocks_per_sector = Param.Int(1, "Number of sub-sectors per sector");
+
+    # Get replacement policy from the parent (cache)
+    replacement_policy = Param.BaseReplacementPolicy(
+        Parent.replacement_policy, "Replacement policy")
 
 class FALRU(BaseTags):
     type = 'FALRU'
     cxx_class = 'FALRU'
     cxx_header = "mem/cache/tags/fa_lru.hh"
+
+    min_tracked_cache_size = Param.MemorySize("128kB", "Minimum cache size for"
+                                              " which we track statistics")

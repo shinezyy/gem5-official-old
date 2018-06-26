@@ -50,18 +50,13 @@
 
 #include "mem/cache/write_queue_entry.hh"
 
-#include <algorithm>
 #include <cassert>
 #include <string>
-#include <vector>
 
 #include "base/logging.hh"
 #include "base/types.hh"
-#include "debug/Cache.hh"
-#include "mem/cache/cache.hh"
-#include "sim/core.hh"
-
-using namespace std;
+#include "mem/cache/base.hh"
+#include "mem/request.hh"
 
 inline void
 WriteQueueEntry::TargetList::add(PacketPtr pkt, Tick readyTime,
@@ -141,7 +136,7 @@ WriteQueueEntry::checkFunctional(PacketPtr pkt)
 }
 
 bool
-WriteQueueEntry::sendPacket(Cache &cache)
+WriteQueueEntry::sendPacket(BaseCache &cache)
 {
     return cache.sendWriteQueuePacket(this);
 }
@@ -163,7 +158,7 @@ WriteQueueEntry::print(std::ostream &os, int verbosity,
 std::string
 WriteQueueEntry::print() const
 {
-    ostringstream str;
+    std::ostringstream str;
     print(str);
     return str.str();
 }

@@ -41,7 +41,9 @@
 #include <string>
 #include <vector>
 
+#include "arch/riscv/isa.hh"
 #include "arch/riscv/isa_traits.hh"
+#include "arch/riscv/registers.hh"
 #include "base/loader/elf_object.hh"
 #include "base/loader/object_file.hh"
 #include "base/logging.hh"
@@ -59,9 +61,12 @@
 using namespace std;
 using namespace RiscvISA;
 
-RiscvProcess::RiscvProcess(ProcessParams * params,
-    ObjectFile *objFile) : Process(params, objFile)
+RiscvProcess::RiscvProcess(ProcessParams *params, ObjectFile *objFile) :
+        Process(params,
+                new EmulationPageTable(params->name, params->pid, PageBytes),
+                objFile)
 {
+    fatal_if(params->useArchPT, "Arch page tables not implemented.");
     const Addr stack_base = 0x7FFFFFFFFFFFFFFFL;
     const Addr max_stack_size = 8 * 1024 * 1024;
     const Addr next_thread_stack_base = stack_base - max_stack_size;
@@ -78,6 +83,8 @@ RiscvProcess::initState()
     Process::initState();
 
     argsInit<uint64_t>(PageBytes);
+    for (ContextID ctx: contextIds)
+        system->getThreadContext(ctx)->setMiscRegNoEffect(MISCREG_PRV, PRV_U);
 }
 
 template<class IntType> void

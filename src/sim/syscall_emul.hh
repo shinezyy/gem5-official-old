@@ -93,6 +93,7 @@
 #include <memory>
 #include <string>
 
+#include "arch/generic/tlb.hh"
 #include "arch/utility.hh"
 #include "base/intmath.hh"
 #include "base/loader/object_file.hh"
@@ -201,6 +202,14 @@ SyscallReturn unlinkHelper(SyscallDesc *desc, int num,
                            int index);
 SyscallReturn unlinkFunc(SyscallDesc *desc, int num,
                          Process *p, ThreadContext *tc);
+
+/// Target link() handler
+SyscallReturn linkFunc(SyscallDesc *desc, int num, Process *p,
+                       ThreadContext *tc);
+
+/// Target symlink() handler.
+SyscallReturn symlinkFunc(SyscallDesc *desc, int num, Process *p,
+                          ThreadContext *tc);
 
 /// Target mkdir() handler.
 SyscallReturn mkdirFunc(SyscallDesc *desc, int num,
@@ -1730,6 +1739,7 @@ prlimitFunc(SyscallDesc *desc, int callnum, Process *process,
             rlp->rlim_cur = rlp->rlim_max = 256*1024*1024;
             rlp->rlim_cur = TheISA::htog(rlp->rlim_cur);
             rlp->rlim_max = TheISA::htog(rlp->rlim_max);
+            break;
           default:
             warn("prlimit: unimplemented resource %d", resource);
             return -EINVAL;

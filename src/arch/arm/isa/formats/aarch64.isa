@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 ARM Limited
+// Copyright (c) 2011-2018 ARM Limited
 // All rights reserved
 //
 // The license below extends only to copyright in the software and shall
@@ -108,6 +108,8 @@ namespace Aarch64
                 return new SubXImm(machInst, rdsp, rnsp, imm);
               case 0x3:
                 return new SubXImmCc(machInst, rdzr, rnsp, imm);
+              default:
+                M5_UNREACHABLE;
             }
           }
           case 0x4:
@@ -150,6 +152,8 @@ namespace Aarch64
                 return new EorXImm(machInst, rdsp, rn, imm);
               case 0x3:
                 return new AndXImmCc(machInst, rdzr, rn, imm);
+              default:
+                M5_UNREACHABLE;
             }
           }
           case 0x5:
@@ -167,6 +171,8 @@ namespace Aarch64
                 return new Movz(machInst, rdzr, imm16, hw * 16);
               case 0x3:
                 return new Movk(machInst, rdzr, imm16, hw * 16);
+              default:
+                M5_UNREACHABLE;
             }
           }
           case 0x6:
@@ -181,6 +187,8 @@ namespace Aarch64
                 return new Ubfm64(machInst, rdzr, rn, immr, imms);
               case 0x3:
                 return new Unknown64(machInst);
+              default:
+                M5_UNREACHABLE;
             }
           case 0x7:
           {
@@ -242,21 +250,25 @@ namespace Aarch64
                     (ConditionCode)(uint8_t)(bits(machInst, 3, 0));
                 return new BCond64(machInst, imm, condCode);
             } else if (bits(machInst, 25, 24) == 0x0) {
+
                 if (bits(machInst, 4, 2))
                     return new Unknown64(machInst);
+
+                auto imm16 = bits(machInst, 20, 5);
                 uint8_t decVal = (bits(machInst, 1, 0) << 0) |
                                  (bits(machInst, 23, 21) << 2);
+
                 switch (decVal) {
                   case 0x01:
-                    return new Svc64(machInst);
+                    return new Svc64(machInst, imm16);
                   case 0x02:
-                    return new Hvc64(machInst);
+                    return new Hvc64(machInst, imm16);
                   case 0x03:
-                    return new Smc64(machInst);
+                    return new Smc64(machInst, imm16);
                   case 0x04:
-                    return new FailUnimplemented("brk", machInst);
+                    return new Brk64(machInst, imm16);
                   case 0x08:
-                    return new FailUnimplemented("hlt", machInst);
+                    return new Hlt64(machInst, imm16);
                   case 0x15:
                     return new FailUnimplemented("dcps1", machInst);
                   case 0x16:
@@ -357,7 +369,28 @@ namespace Aarch64
                     }
                     // Check for invalid registers
                     if (miscReg == MISCREG_UNKNOWN) {
-                        return new Unknown64(machInst);
+                        auto full_mnemonic =
+                            csprintf("%s op0:%d op1:%d crn:%d crm:%d op2:%d",
+                                     read ? "mrs" : "msr",
+                                     op0, op1, crn, crm, op2);
+
+                        return new FailUnimplemented(read ? "mrs" : "msr",
+                            machInst, full_mnemonic);
+
+                    } else if (miscReg == MISCREG_IMPDEF_UNIMPL) {
+                        auto full_mnemonic =
+                            csprintf("%s op0:%d op1:%d crn:%d crm:%d op2:%d",
+                                     read ? "mrs" : "msr",
+                                     op0, op1, crn, crm, op2);
+
+                        if (miscRegInfo[miscReg][MISCREG_WARN_NOT_FAIL]) {
+                            return new WarnUnimplemented(read ? "mrs" : "msr",
+                                machInst, full_mnemonic + " treated as NOP");
+                        } else {
+                            return new FailUnimplemented(read ? "mrs" : "msr",
+                                machInst, full_mnemonic);
+                        }
+
                     } else if (miscRegInfo[miscReg][MISCREG_IMPLEMENTED]) {
                         if (miscReg == MISCREG_NZCV) {
                             if (read)
@@ -401,6 +434,8 @@ namespace Aarch64
                     }
                   }
                   break;
+                  default:
+                    M5_UNREACHABLE;
                 }
             } else if (bits(machInst, 25) == 0x1) {
                 uint8_t opc = bits(machInst, 24, 21);
@@ -425,8 +460,11 @@ namespace Aarch64
                     if (rn != 0x1f)
                         return new Unknown64(machInst);
                     return new FailUnimplemented("dret", machInst);
+                  default:
+                    return new Unknown64(machInst);
                 }
             }
+          M5_FALLTHROUGH;
           default:
             return new Unknown64(machInst);
         }
@@ -466,6 +504,8 @@ namespace Aarch64
                         return new STXRW64(machInst, rt, rnsp, rs);
                       case 0x3:
                         return new STXRX64(machInst, rt, rnsp, rs);
+                      default:
+                        M5_UNREACHABLE;
                     }
                   case 0x1:
                     switch (size) {
@@ -477,6 +517,8 @@ namespace Aarch64
                         return new STLXRW64(machInst, rt, rnsp, rs);
                       case 0x3:
                         return new STLXRX64(machInst, rt, rnsp, rs);
+                      default:
+                        M5_UNREACHABLE;
                     }
                   case 0x2:
                     switch (size) {
@@ -487,6 +529,8 @@ namespace Aarch64
                         return new STXPW64(machInst, rs, rt, rt2, rnsp);
                       case 0x3:
                         return new STXPX64(machInst, rs, rt, rt2, rnsp);
+                      default:
+                        M5_UNREACHABLE;
                     }
 
                   case 0x3:
@@ -498,6 +542,8 @@ namespace Aarch64
                         return new STLXPW64(machInst, rs, rt, rt2, rnsp);
                       case 0x3:
                         return new STLXPX64(machInst, rs, rt, rt2, rnsp);
+                      default:
+                        M5_UNREACHABLE;
                     }
 
                   case 0x4:
@@ -510,6 +556,8 @@ namespace Aarch64
                         return new LDXRW64(machInst, rt, rnsp, rs);
                       case 0x3:
                         return new LDXRX64(machInst, rt, rnsp, rs);
+                      default:
+                        M5_UNREACHABLE;
                     }
                   case 0x5:
                     switch (size) {
@@ -521,6 +569,8 @@ namespace Aarch64
                         return new LDAXRW64(machInst, rt, rnsp, rs);
                       case 0x3:
                         return new LDAXRX64(machInst, rt, rnsp, rs);
+                      default:
+                        M5_UNREACHABLE;
                     }
                   case 0x6:
                     switch (size) {
@@ -531,6 +581,8 @@ namespace Aarch64
                         return new LDXPW64(machInst, rt, rt2, rnsp);
                       case 0x3:
                         return new LDXPX64(machInst, rt, rt2, rnsp);
+                      default:
+                        M5_UNREACHABLE;
                     }
 
                   case 0x7:
@@ -542,6 +594,8 @@ namespace Aarch64
                         return new LDAXPW64(machInst, rt, rt2, rnsp);
                       case 0x3:
                         return new LDAXPX64(machInst, rt, rt2, rnsp);
+                      default:
+                        M5_UNREACHABLE;
                     }
 
                   case 0x9:
@@ -554,6 +608,8 @@ namespace Aarch64
                         return new STLRW64(machInst, rt, rnsp);
                       case 0x3:
                         return new STLRX64(machInst, rt, rnsp);
+                      default:
+                        M5_UNREACHABLE;
                     }
                   case 0xd:
                     switch (size) {
@@ -565,6 +621,8 @@ namespace Aarch64
                         return new LDARW64(machInst, rt, rnsp);
                       case 0x3:
                         return new LDARX64(machInst, rt, rnsp);
+                      default:
+                        M5_UNREACHABLE;
                     }
                   default:
                     return new Unknown64(machInst);
@@ -1017,9 +1075,13 @@ namespace Aarch64
                         return new Unknown64(machInst);
                     }
                   }
+                  default:
+                    M5_UNREACHABLE;
                 }
             }
           }
+          default:
+            M5_UNREACHABLE;
         }
         return new FailUnimplemented("Unhandled Case1", machInst);
     }
@@ -1066,6 +1128,8 @@ namespace Aarch64
                 return new AndXSRegCc(machInst, rdzr, rn, rm, imm6, type);
               case 0x7:
                 return new BicXSRegCc(machInst, rdzr, rn, rm, imm6, type);
+              default:
+                M5_UNREACHABLE;
             }
           }
           case 0x1:
@@ -1092,6 +1156,8 @@ namespace Aarch64
                     return new SubXSReg(machInst, rdzr, rn, rm, imm6, type);
                   case 0x3:
                     return new SubXSRegCc(machInst, rdzr, rn, rm, imm6, type);
+                  default:
+                    M5_UNREACHABLE;
                 }
             } else {
                 if (bits(machInst, 23, 22) != 0 || bits(machInst, 12, 10) > 0x4)
@@ -1115,6 +1181,8 @@ namespace Aarch64
                     return new SubXEReg(machInst, rdsp, rnsp, rm, type, imm3);
                   case 0x3:
                     return new SubXERegCc(machInst, rdzr, rnsp, rm, type, imm3);
+                  default:
+                    M5_UNREACHABLE;
                 }
             }
           }
@@ -1141,6 +1209,8 @@ namespace Aarch64
                     return new SbcXSReg(machInst, rdzr, rn, rm, 0, LSL);
                   case 0x3:
                     return new SbcXSRegCc(machInst, rdzr, rn, rm, 0, LSL);
+                  default:
+                    M5_UNREACHABLE;
                 }
               }
               case 0x1:
@@ -1194,6 +1264,8 @@ namespace Aarch64
                     return new Csinv64(machInst, rdzr, rn, rm, cond);
                   case 0x3:
                     return new Csneg64(machInst, rdzr, rn, rm, cond);
+                  default:
+                    M5_UNREACHABLE;
                 }
               }
               case 0x3:
@@ -1257,8 +1329,12 @@ namespace Aarch64
                         return new Clz64(machInst, rdzr, rn);
                       case 0x5:
                         return new Cls64(machInst, rdzr, rn);
+                      default:
+                        return new Unknown64(machInst);
                     }
                 }
+              default:
+                M5_UNREACHABLE;
             }
           }
           case 0x3:
@@ -1299,6 +1375,8 @@ namespace Aarch64
                 return new Unknown64(machInst);
             }
           }
+          default:
+            M5_UNREACHABLE;
         }
         return new FailUnimplemented("Unhandled Case2", machInst);
     }
@@ -1480,6 +1558,8 @@ namespace Aarch64
                   default:
                     return new Unknown64(machInst);
                 }
+              default:
+                return new Unknown64(machInst);
             }
         } else {
             // 30=0, 28:24=11110, 21=1
@@ -1838,6 +1918,7 @@ namespace Aarch64
                         return new Unknown64(machInst);
                     }
                 }
+                M5_UNREACHABLE;
               case 0x1:
               {
                 if (bits(machInst, 31) ||
@@ -1942,9 +2023,11 @@ namespace Aarch64
                 else
                     return new Unknown64(machInst);
               }
+              default:
+                M5_UNREACHABLE;
             }
         }
-        return new FailUnimplemented("Unhandled Case4", machInst);
+        M5_UNREACHABLE;
     }
 }
 }};

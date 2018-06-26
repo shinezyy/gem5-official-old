@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012,2017 ARM Limited
+ * Copyright (c) 2012,2017-2018 ARM Limited
  * All rights reserved
  *
  * The license below extends only to copyright in the software and shall
@@ -55,6 +55,7 @@
 #  define M5_NO_INLINE __attribute__ ((__noinline__))
 #  define M5_DEPRECATED __attribute__((deprecated))
 #  define M5_DEPRECATED_MSG(MSG) __attribute__((deprecated(MSG)))
+#  define M5_UNREACHABLE __builtin_unreachable()
 #endif
 
 #if defined(__clang__)
@@ -72,9 +73,17 @@
     #else
         #define M5_FALLTHROUGH
     #endif
+
+    #if __has_cpp_attribute(nodiscard)
+        #define M5_NODISCARD [[nodiscard]]
+    #else
+        #define M5_NODISCARD
+    #endif
 #else
     // Unsupported (and no warning) on GCC < 7.
     #define M5_FALLTHROUGH
+
+    #define M5_NODISCARD
 #endif
 
 // std::make_unique redefined for C++11 compilers

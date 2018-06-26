@@ -73,7 +73,7 @@ namespace X86ISA
         accessDistance = p->accessDistance;
         clock = p->clk_domain->clockPeriod();
 
-        tlb.assign(size, GpuTlbEntry());
+        tlb.assign(size, TlbEntry());
 
         freeList.resize(numSets);
         entryList.resize(numSets);
@@ -166,10 +166,10 @@ namespace X86ISA
         }
     }
 
-    GpuTlbEntry*
-    GpuTLB::insert(Addr vpn, GpuTlbEntry &entry)
+    TlbEntry*
+    GpuTLB::insert(Addr vpn, TlbEntry &entry)
     {
-        GpuTlbEntry *newEntry = nullptr;
+        TlbEntry *newEntry = nullptr;
 
         /**
          * vpn holds the virtual page address
@@ -222,7 +222,7 @@ namespace X86ISA
         return entry;
     }
 
-    GpuTlbEntry*
+    TlbEntry*
     GpuTLB::lookup(Addr va, bool update_lru)
     {
         int set = (va >> TheISA::PageShift) & setMask;
@@ -242,7 +242,7 @@ namespace X86ISA
 
         for (int i = 0; i < numSets; ++i) {
             while (!entryList[i].empty()) {
-                GpuTlbEntry *entry = entryList[i].front();
+                TlbEntry *entry = entryList[i].front();
                 entryList[i].pop_front();
                 freeList[i].push_back(entry);
             }
@@ -287,7 +287,7 @@ namespace X86ISA
     }
 
     Fault
-    GpuTLB::translateInt(RequestPtr req, ThreadContext *tc)
+    GpuTLB::translateInt(const RequestPtr &req, ThreadContext *tc)
     {
         DPRINTF(GPUTLB, "Addresses references internal memory.\n");
         Addr vaddr = req->getVaddr();
@@ -662,7 +662,8 @@ namespace X86ISA
      * On a hit it will update the LRU stack.
      */
     bool
-    GpuTLB::tlbLookup(RequestPtr req, ThreadContext *tc, bool update_stats)
+    GpuTLB::tlbLookup(const RequestPtr &req,
+                      ThreadContext *tc, bool update_stats)
     {
         bool tlb_hit = false;
     #ifndef NDEBUG
@@ -684,7 +685,7 @@ namespace X86ISA
             if (m5Reg.paging) {
                 DPRINTF(GPUTLB, "Paging enabled.\n");
                 //update LRU stack on a hit
-                GpuTlbEntry *entry = lookup(vaddr, true);
+                TlbEntry *entry = lookup(vaddr, true);
 
                 if (entry)
                     tlb_hit = true;
@@ -710,7 +711,7 @@ namespace X86ISA
     }
 
     Fault
-    GpuTLB::translate(RequestPtr req, ThreadContext *tc,
+    GpuTLB::translate(const RequestPtr &req, ThreadContext *tc,
                       Translation *translation, Mode mode,
                       bool &delayedResponse, bool timing, int &latency)
     {
@@ -792,7 +793,7 @@ namespace X86ISA
             if (m5Reg.paging) {
                 DPRINTF(GPUTLB, "Paging enabled.\n");
                 // The vaddr already has the segment base applied.
-                GpuTlbEntry *entry = lookup(vaddr);
+                TlbEntry *entry = lookup(vaddr);
                 localNumTLBAccesses++;
 
                 if (!entry) {
@@ -808,31 +809,31 @@ namespace X86ISA
                                 "at pc %#x.\n", vaddr, tc->instAddr());
 
                         Process *p = tc->getProcessPtr();
-                        GpuTlbEntry newEntry;
-                        bool success = p->pTable->lookup(vaddr, newEntry);
+                        const EmulationPageTable::Entry *pte =
+                            p->pTable->lookup(vaddr);
 
-                        if (!success && mode != BaseTLB::Execute) {
+                        if (!pte && mode != BaseTLB::Execute) {
                             // penalize a "page fault" more
-                            if (timing) {
+                            if (timing)
                                 latency += missLatency2;
-                            }
 
                             if (p->fixupStackFault(vaddr))
-                                success = p->pTable->lookup(vaddr, newEntry);
+                                pte = p->pTable->lookup(vaddr);
                         }
 
-                        if (!success) {
+                        if (!pte) {
                             return std::make_shared<PageFault>(vaddr, true,
                                                                mode, true,
                                                                false);
                         } else {
-                            newEntry.valid = success;
                             Addr alignedVaddr = p->pTable->pageAlign(vaddr);
 
                             DPRINTF(GPUTLB, "Mapping %#x to %#x\n",
-                                    alignedVaddr, newEntry.pageStart());
+                                    alignedVaddr, pte->paddr);
 
-                            entry = insert(alignedVaddr, newEntry);
+                            TlbEntry gpuEntry(p->pid(), alignedVaddr,
+                                              pte->paddr, false, false);
+                            entry = insert(alignedVaddr, gpuEntry);
                         }
 
                         DPRINTF(GPUTLB, "Miss was serviced.\n");
@@ -913,8 +914,8 @@ namespace X86ISA
     };
 
     Fault
-    GpuTLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode,
-                            int &latency)
+    GpuTLB::translateAtomic(const RequestPtr &req, ThreadContext *tc,
+                            Mode mode, int &latency)
     {
         bool delayedResponse;
 
@@ -923,7 +924,7 @@ namespace X86ISA
     }
 
     void
-    GpuTLB::translateTiming(RequestPtr req, ThreadContext *tc,
+    GpuTLB::translateTiming(const RequestPtr &req, ThreadContext *tc,
             Translation *translation, Mode mode, int &latency)
     {
         bool delayedResponse;
@@ -1069,7 +1070,7 @@ namespace X86ISA
         }
 
         tlbOutcome lookup_outcome = TLB_MISS;
-        RequestPtr tmp_req = pkt->req;
+        const RequestPtr &tmp_req = pkt->req;
 
         // Access the TLB and figure out if it's a hit or a miss.
         bool success = tlbLookup(tmp_req, tmp_tc, update_stats);
@@ -1077,11 +1078,13 @@ namespace X86ISA
         if (success) {
             lookup_outcome = TLB_HIT;
             // Put the entry in SenderState
-            GpuTlbEntry *entry = lookup(tmp_req->getVaddr(), false);
+            TlbEntry *entry = lookup(tmp_req->getVaddr(), false);
             assert(entry);
 
+            auto p = sender_state->tc->getProcessPtr();
             sender_state->tlbEntry =
-                new GpuTlbEntry(0, entry->vaddr, entry->paddr, entry->valid);
+                new TlbEntry(p->pid(), entry->vaddr, entry->paddr,
+                             false, false);
 
             if (update_stats) {
                 // the reqCnt has an entry per level, so its size tells us
@@ -1133,7 +1136,7 @@ namespace X86ISA
      */
     void
     GpuTLB::pagingProtectionChecks(ThreadContext *tc, PacketPtr pkt,
-            GpuTlbEntry * tlb_entry, Mode mode)
+            TlbEntry * tlb_entry, Mode mode)
     {
         HandyM5Reg m5Reg = tc->readMiscRegNoEffect(MISCREG_M5_REG);
         uint32_t flags = pkt->req->getFlags();
@@ -1179,7 +1182,7 @@ namespace X86ISA
         ThreadContext *tc = sender_state->tc;
         Mode mode = sender_state->tlbMode;
 
-        GpuTlbEntry *local_entry, *new_entry;
+        TlbEntry *local_entry, *new_entry;
 
         if (tlb_outcome == TLB_HIT) {
             DPRINTF(GPUTLB, "Translation Done - TLB Hit for addr %#x\n", vaddr);
@@ -1330,25 +1333,27 @@ namespace X86ISA
                 safe_cast<TranslationState*>(pkt->senderState);
 
             Process *p = sender_state->tc->getProcessPtr();
-            TlbEntry newEntry;
             Addr vaddr = pkt->req->getVaddr();
     #ifndef NDEBUG
             Addr alignedVaddr = p->pTable->pageAlign(vaddr);
             assert(alignedVaddr == virtPageAddr);
     #endif
-            bool success;
-            success = p->pTable->lookup(vaddr, newEntry);
-            if (!success && sender_state->tlbMode != BaseTLB::Execute) {
-                if (p->fixupStackFault(vaddr)) {
-                    success = p->pTable->lookup(vaddr, newEntry);
-                }
+            const EmulationPageTable::Entry *pte = p->pTable->lookup(vaddr);
+            if (!pte && sender_state->tlbMode != BaseTLB::Execute &&
+                    p->fixupStackFault(vaddr)) {
+                pte = p->pTable->lookup(vaddr);
             }
 
-            DPRINTF(GPUTLB, "Mapping %#x to %#x\n", alignedVaddr,
-                    newEntry.pageStart());
+            if (pte) {
+                DPRINTF(GPUTLB, "Mapping %#x to %#x\n", alignedVaddr,
+                        pte->paddr);
 
-            sender_state->tlbEntry =
-                new GpuTlbEntry(0, newEntry.vaddr, newEntry.paddr, success);
+                sender_state->tlbEntry =
+                    new TlbEntry(p->pid(), virtPageAddr, pte->paddr, false,
+                                 false);
+            } else {
+                sender_state->tlbEntry = nullptr;
+            }
 
             handleTranslationReturn(virtPageAddr, TLB_MISS, pkt);
         } else if (outcome == MISS_RETURN) {
@@ -1424,7 +1429,7 @@ namespace X86ISA
         Mode mode = sender_state->tlbMode;
         Addr vaddr = pkt->req->getVaddr();
 
-        GpuTlbEntry *local_entry, *new_entry;
+        TlbEntry *local_entry, *new_entry;
 
         if (tlb_outcome == TLB_HIT) {
             DPRINTF(GPUTLB, "Functional Translation Done - TLB hit for addr "
@@ -1458,13 +1463,18 @@ namespace X86ISA
                 "while paddr was %#x.\n", local_entry->vaddr,
                 local_entry->paddr);
 
-        // Do paging checks if it's a normal functional access.  If it's for a
-        // prefetch, then sometimes you can try to prefetch something that won't
-        // pass protection. We don't actually want to fault becuase there is no
-        // demand access to deem this a violation.  Just put it in the TLB and
-        // it will fault if indeed a future demand access touches it in
-        // violation.
-        if (!sender_state->prefetch && sender_state->tlbEntry->valid)
+        /**
+         * Do paging checks if it's a normal functional access.  If it's for a
+         * prefetch, then sometimes you can try to prefetch something that
+         * won't pass protection. We don't actually want to fault becuase there
+         * is no demand access to deem this a violation.  Just put it in the
+         * TLB and it will fault if indeed a future demand access touches it in
+         * violation.
+         *
+         * This feature could be used to explore security issues around
+         * speculative memory accesses.
+         */
+        if (!sender_state->prefetch && sender_state->tlbEntry)
             pagingProtectionChecks(tc, pkt, local_entry, mode);
 
         int page_size = local_entry->size();
@@ -1524,7 +1534,6 @@ namespace X86ISA
                         virt_page_addr);
 
                 Process *p = tc->getProcessPtr();
-                TlbEntry newEntry;
 
                 Addr vaddr = pkt->req->getVaddr();
     #ifndef NDEBUG
@@ -1532,41 +1541,41 @@ namespace X86ISA
                 assert(alignedVaddr == virt_page_addr);
     #endif
 
-                bool success = p->pTable->lookup(vaddr, newEntry);
-                if (!success && sender_state->tlbMode != BaseTLB::Execute) {
-                    if (p->fixupStackFault(vaddr))
-                        success = p->pTable->lookup(vaddr, newEntry);
+                const EmulationPageTable::Entry *pte =
+                        p->pTable->lookup(vaddr);
+                if (!pte && sender_state->tlbMode != BaseTLB::Execute &&
+                        p->fixupStackFault(vaddr)) {
+                    pte = p->pTable->lookup(vaddr);
                 }
 
                 if (!sender_state->prefetch) {
                     // no PageFaults are permitted after
                     // the second page table lookup
-                    assert(success);
+                    assert(pte);
 
                     DPRINTF(GPUTLB, "Mapping %#x to %#x\n", alignedVaddr,
-                           newEntry.pageStart());
+                            pte->paddr);
 
-                    sender_state->tlbEntry = new GpuTlbEntry(0, newEntry.vaddr,
-                                                             newEntry.paddr,
-                                                             success);
+                    sender_state->tlbEntry =
+                        new TlbEntry(p->pid(), virt_page_addr,
+                                     pte->paddr, false, false);
                 } else {
                     // If this was a prefetch, then do the normal thing if it
                     // was a successful translation.  Otherwise, send an empty
                     // TLB entry back so that it can be figured out as empty and
                     // handled accordingly.
-                    if (success) {
+                    if (pte) {
                         DPRINTF(GPUTLB, "Mapping %#x to %#x\n", alignedVaddr,
-                               newEntry.pageStart());
+                                pte->paddr);
 
-                        sender_state->tlbEntry = new GpuTlbEntry(0,
-                                                                 newEntry.vaddr,
-                                                                 newEntry.paddr,
-                                                                 success);
+                        sender_state->tlbEntry =
+                            new TlbEntry(p->pid(), virt_page_addr,
+                                         pte->paddr, false, false);
                     } else {
                         DPRINTF(GPUPrefetch, "Prefetch failed %#x\n",
                                 alignedVaddr);
 
-                        sender_state->tlbEntry = new GpuTlbEntry();
+                        sender_state->tlbEntry = nullptr;
 
                         return;
                     }
@@ -1576,13 +1585,15 @@ namespace X86ISA
             DPRINTF(GPUPrefetch, "Functional Hit for vaddr %#x\n",
                     tlb->lookup(pkt->req->getVaddr()));
 
-            GpuTlbEntry *entry = tlb->lookup(pkt->req->getVaddr(),
+            TlbEntry *entry = tlb->lookup(pkt->req->getVaddr(),
                                              update_stats);
 
             assert(entry);
 
+            auto p = sender_state->tc->getProcessPtr();
             sender_state->tlbEntry =
-                new GpuTlbEntry(0, entry->vaddr, entry->paddr, entry->valid);
+                new TlbEntry(p->pid(), entry->vaddr, entry->paddr,
+                             false, false);
         }
         // This is the function that would populate pkt->req with the paddr of
         // the translation. But if no translation happens (i.e Prefetch fails)

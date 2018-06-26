@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014,2016 ARM Limited
+ * Copyright (c) 2012-2014,2016-2018 ARM Limited
  * All rights reserved.
  *
  * The license below extends only to copyright in the software and shall
@@ -46,18 +46,24 @@
  * Declaration of a common base class for cache tagstore objects.
  */
 
-#ifndef __BASE_TAGS_HH__
-#define __BASE_TAGS_HH__
+#ifndef __MEM_CACHE_TAGS_BASE_HH__
+#define __MEM_CACHE_TAGS_BASE_HH__
 
+#include <cassert>
+#include <functional>
 #include <string>
 
 #include "base/callback.hh"
+#include "base/logging.hh"
 #include "base/statistics.hh"
+#include "base/types.hh"
 #include "mem/cache/blk.hh"
+#include "mem/packet.hh"
 #include "params/BaseTags.hh"
 #include "sim/clocked_object.hh"
 
 class BaseCache;
+class ReplaceableEntry;
 
 /**
  * A common base class of Cache tagstore objects.
@@ -86,21 +92,23 @@ class BaseTags : public ClockedObject
      * The number of tags that need to be touched to meet the warmup
      * percentage.
      */
-    int warmupBound;
+    const unsigned warmupBound;
     /** Marked true when the cache is warmed up. */
     bool warmedUp;
 
     /** the number of blocks in the cache */
-    unsigned numBlocks;
+    const unsigned numBlocks;
+
+    /** The data blocks, 1 per cache block. */
+    std::unique_ptr<uint8_t[]> dataBlks;
 
     // Statistics
     /**
+     * TODO: It would be good if these stats were acquired after warmup.
      * @addtogroup CacheStatistics
      * @{
      */
 
-    /** Number of replacements of valid blocks per thread. */
-    Stats::Vector replacements;
     /** Per cycle average of the number of tags that hold valid data. */
     Stats::Average tagsInUse;
 
@@ -120,7 +128,7 @@ class BaseTags : public ClockedObject
      */
     Stats::Formula avgRefs;
 
-    /** The cycle that the warmup percentage was hit. */
+    /** The cycle that the warmup percentage was hit. 0 on failure. */
     Stats::Scalar warmupCycle;
 
     /** Average occupancy of each requestor using the cache */
@@ -171,22 +179,31 @@ class BaseTags : public ClockedObject
      * Average in the reference count for valid blocks when the simulation
      * exits.
      */
-    virtual void cleanupRefs() {}
+    void cleanupRefs();
 
     /**
      * Computes stats just prior to dump event
      */
-    virtual void computeStats() {}
+    void computeStats();
 
     /**
      * Print all tags used
      */
-    virtual std::string print() const = 0;
+    std::string print();
 
     /**
      * Find a block using the memory address
      */
     virtual CacheBlk * findBlock(Addr addr, bool is_secure) const = 0;
+
+    /**
+     * Find a block given set and way.
+     *
+     * @param set The set of the block.
+     * @param way The way of the block.
+     * @return The block.
+     */
+    virtual ReplaceableEntry* findBlockBySetAndWay(int set, int way) const = 0;
 
     /**
      * Align an address to the block size.
@@ -209,14 +226,6 @@ class BaseTags : public ClockedObject
     }
 
     /**
-     * Find the cache block given set and way
-     * @param set The set of the block.
-     * @param way The way of the block.
-     * @return The cache block.
-     */
-    virtual CacheBlk *findBlockBySetAndWay(int set, int way) const = 0;
-
-    /**
      * Limit the allocation for the cache ways.
      * @param ways The maximum number of ways available for replacement.
      */
@@ -235,21 +244,95 @@ class BaseTags : public ClockedObject
         return -1;
     }
 
-    virtual void invalidate(CacheBlk *blk) = 0;
+    /**
+     * This function updates the tags when a block is invalidated
+     *
+     * @param blk A valid block to invalidate.
+     */
+    virtual void invalidate(CacheBlk *blk)
+    {
+        assert(blk);
+        assert(blk->isValid());
+
+        occupancies[blk->srcMasterId]--;
+        totalRefs += blk->refCount;
+        sampledRefs++;
+
+        blk->invalidate();
+    }
+
+    /**
+     * Find replacement victim based on address. If the address requires
+     * blocks to be evicted, their locations are listed for eviction. If a
+     * conventional cache is being used, the list only contains the victim.
+     * However, if using sector or compressed caches, the victim is one of
+     * the blocks to be evicted, but its location is the only one that will
+     * be assigned to the newly allocated block associated to this address.
+     * @sa insertBlock
+     *
+     * @param addr Address to find a victim for.
+     * @param is_secure True if the target memory space is secure.
+     * @param evict_blks Cache blocks to be evicted.
+     * @return Cache block to be replaced.
+     */
+    virtual CacheBlk* findVictim(Addr addr, const bool is_secure,
+                                 std::vector<CacheBlk*>& evict_blks) const = 0;
 
     virtual CacheBlk* accessBlock(Addr addr, bool is_secure, Cycles &lat) = 0;
 
     virtual Addr extractTag(Addr addr) const = 0;
 
-    virtual void insertBlock(PacketPtr pkt, CacheBlk *blk) = 0;
+    /**
+     * Insert the new block into the cache and update stats.
+     *
+     * @param pkt Packet holding the address to update
+     * @param blk The block to update.
+     */
+    virtual void insertBlock(const PacketPtr pkt, CacheBlk *blk);
 
-    virtual Addr regenerateBlkAddr(Addr tag, unsigned set) const = 0;
+    /**
+     * Regenerate the block address.
+     *
+     * @param block The block.
+     * @return the block address.
+     */
+    virtual Addr regenerateBlkAddr(const CacheBlk* blk) const = 0;
 
-    virtual CacheBlk* findVictim(Addr addr) = 0;
+    /**
+     * Visit each block in the tags and apply a visitor
+     *
+     * The visitor should be a std::function that takes a cache block
+     * reference as its parameter.
+     *
+     * @param visitor Visitor to call on each block.
+     */
+    virtual void forEachBlk(std::function<void(CacheBlk &)> visitor) = 0;
 
-    virtual int extractSet(Addr addr) const = 0;
+    /**
+     * Find if any of the blocks satisfies a condition
+     *
+     * The visitor should be a std::function that takes a cache block
+     * reference as its parameter. The visitor will terminate the
+     * traversal early if the condition is satisfied.
+     *
+     * @param visitor Visitor to call on each block.
+     */
+    virtual bool anyBlk(std::function<bool(CacheBlk &)> visitor) = 0;
 
-    virtual void forEachBlk(CacheBlkVisitor &visitor) = 0;
+  private:
+    /**
+     * Update the reference stats using data from the input block
+     *
+     * @param blk The input block
+     */
+    void cleanupRefsVisitor(CacheBlk &blk);
+
+    /**
+     * Update the occupancy and age stats using data from the input block
+     *
+     * @param blk The input block
+     */
+    void computeStatsVisitor(CacheBlk &blk);
 };
 
 class BaseTagsCallback : public Callback
@@ -268,4 +351,4 @@ class BaseTagsDumpCallback : public Callback
     virtual void process() { tags->computeStats(); };
 };
 
-#endif //__BASE_TAGS_HH__
+#endif //__MEM_CACHE_TAGS_BASE_HH__
