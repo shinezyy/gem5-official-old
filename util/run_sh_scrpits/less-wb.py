@@ -53,10 +53,11 @@ def run(benchmark):
             '--l2cache',
             '--l2_size=4MB',
             '--l2_assoc=8',
-            '-I 200000000',
+            '-I {}'.format(200*10**6),
             '--mem-size=4GB',
+            '--checkpoint-restore=1',
             '--restore-simpoint-checkpoint',
-            '--restore-with-cpu=DerivO3CPU',
+            '-s {}'.format(10*10**6),
             '--checkpoint-dir={}'.format(cpt_dir),
             ]
     print(options)
@@ -70,7 +71,7 @@ def run(benchmark):
     sh.touch(pjoin(outdir, 'done'))
 
 def main():
-    num_thread = 4
+    num_thread = 1
 
     benchmarks = []
 

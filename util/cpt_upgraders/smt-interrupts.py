@@ -8,12 +8,12 @@ def upgrader(cpt):
         re_cpu_match = re.match('^(.*sys.*\.cpu[^._]*)$', sec)
         if re_cpu_match != None:
             interrupts = cpt.get(sec, 'interrupts')
-            intStatus = cpt.get(sec, 'intStatus')
+            intStatus = cpt.get(sec, 'intstatus')
 
             cpu_name = re_cpu_match.group(1)
 
             cpt.set(cpu_name + ".xc.0", 'interrupts', interrupts)
-            cpt.set(cpu_name + ".xc.0", 'intStatus', intStatus)
+            cpt.set(cpu_name + ".xc.0", 'intstatus', intStatus)
 
             cpt.remove_option(sec, 'interrupts')
-            cpt.remove_option(sec, 'intStatus')
+            cpt.remove_option(sec, 'intstatus')
