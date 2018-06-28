@@ -10,16 +10,27 @@ from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
 
+cmd_timestamp = None
+
 
 def run(benchmark):
-    global opt
+    global cmd_timestamp
 
     gem5_dir = os.environ['gem5_root']
-    outdir = pjoin(uexp('~/consumer-vs-wakeup'), benchmark)
+    outdir = pjoin(uexp('~/gem5-results/normal-outputs'), benchmark)
     cpt_dir = pjoin('/home/share/st_checkpoint', benchmark)
 
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
+
+    if cmd_timestamp:
+        output_timestamp_file = pjoin(outdir, 'done')
+        if os.path.isfile(output_timestamp_file):
+            file_m_time = os.path.getmtime(output_timestamp_file)
+            if file_m_time > cmd_timestamp:
+                print('Command is older than output of {}, skip!'.format(
+                    benchmark))
+                return
 
     exec_dir = os.environ['gem5_run_dir']
     os.chdir(exec_dir)
@@ -59,9 +70,17 @@ def run(benchmark):
     sh.touch(pjoin(outdir, 'done'))
 
 def main():
-    num_thread = 1
+    num_thread = 4
 
     benchmarks = []
+
+    cmd_timestamp_file = './less-wb-cmd-timestamp'
+    global cmd_timestamp
+    if os.path.isfile(cmd_timestamp_file):
+        cmd_timestamp = os.path.getmtime(cmd_timestamp_file)
+        print(cmd_timestamp)
+
+
     with open('./all_function_spec.txt') as f:
         for line in f:
             benchmarks.append(line.strip())

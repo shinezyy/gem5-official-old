@@ -789,12 +789,12 @@ InstructionQueue<Impl>::scheduleReadyInsts()
     IssueStruct *i2e_info = issueToExecuteQueue->access(0);
 
     DynInstPtr mem_inst;
-    while (mem_inst = getDeferredMemInstToExecute()) {
+    while ((mem_inst = getDeferredMemInstToExecute())) {
         addReadyMemInst(mem_inst);
     }
 
     // See if any cache blocked instructions are able to be executed
-    while (mem_inst = getBlockedMemInstToExecute()) {
+    while ((mem_inst = getBlockedMemInstToExecute())) {
         addReadyMemInst(mem_inst);
     }
 

@@ -28,3 +28,4 @@ m5out
 CMakeLists.txt
 cmake-build-debug/
 simpoint/
+util/run_sh_scrpits/less-wb-cmd-timestamp
