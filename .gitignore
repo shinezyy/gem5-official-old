@@ -30,3 +30,6 @@ cmake-build-debug/
 simpoint/
 /util/run_sh_scrpits/less-wb-cmd-timestamp
 /util/run_sh_scrpits/ts-simprofile
+/util/run_sh_scrpits/simpoint-profile-single.py
+/util/run_sh_scrpits/tmp_spec.txt
+/util/run_sh_scrpits/ts-simprofile-tmp
