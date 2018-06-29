@@ -62,7 +62,7 @@ def run(benchmark):
     sh.touch(pjoin(outdir, 'done'))
 
 def main():
-    num_thread = 29
+    num_thread = 27
 
     benchmarks = []
 

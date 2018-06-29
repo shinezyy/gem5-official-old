@@ -1,1 +1,2 @@
 wrf:    STOP wrf_abort. Need library
+sphinx3: Duplicate base phone: +BREATH+?; due to UB about signed of char
