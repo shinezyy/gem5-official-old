@@ -21,9 +21,8 @@ namd
 libquantum
 gamess
 soplex
-wrf
 tonto
-wrf
 dealII
 calculix
 xalancbmk
+milc
