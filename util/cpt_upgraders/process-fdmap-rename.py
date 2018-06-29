@@ -10,6 +10,7 @@ def rename_section(cp, section_from, section_to):
 # Checkpoint version F renames an internal member of Process class.
 def upgrader(cpt):
     import re
+    global rename_section
     for sec in cpt.sections():
         fdm = 'FdMap'
         fde = 'FDEntry'
