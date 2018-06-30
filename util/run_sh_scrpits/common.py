@@ -39,3 +39,12 @@ def avoid_repeated(func, outdir, *args, **kwargs):
         print('{} is older than {}, skip!'.format(out_ts_file,
             script_ts_file))
 
+
+def gem5_home():
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    paths = script_dir.split('/')
+    return '/'.join(paths[:-2])  # delete '/util/run_sh_scrpits'
+
+
+def gem5_build():
+    return pjoin(gem5_home(), 'build/ARM')

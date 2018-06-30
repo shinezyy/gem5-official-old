@@ -9,12 +9,13 @@ import time
 from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
+from common import gem5_home
 
 
 def run(benchmark):
     global opt
 
-    gem5_dir = os.environ['gem5_root']
+    gem5_dir = gem5_home()
     outdir = pjoin(uexp('~/alpha_trace'), benchmark)
     cpt_dir = pjoin('/home/share/st_checkpoint', benchmark)
 

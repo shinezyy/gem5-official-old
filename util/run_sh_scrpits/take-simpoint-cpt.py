@@ -18,7 +18,7 @@ simpoint_profile_dir = uexp('~/gem5-results/simpoint-profile')
 
 def take_cpt_for_benchmark(benchmark, simpoint_file, weight_file, outdir_b):
 
-    gem5_dir = os.environ['gem5_root']
+    gem5_dir = c.gem5_home()
     if not os.path.isdir(outdir_b):
         os.makedirs(outdir_b)
 

@@ -1,8 +1,8 @@
 output_dir=/tmp/bzip2
 
-$gem5_build/gem5.opt \
+xxxx/gem5.opt \
 --outdir=$output_dir \
-$gem5_root/configs/spec2006/se_spec06.py \
+xxxx/configs/spec2006/se_spec06.py \
 --mem-size=8GB \
 --spec-2006-bench \
 -b bzip2 \
