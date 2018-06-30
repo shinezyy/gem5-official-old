@@ -9,7 +9,7 @@ import time
 from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
-from common import gem5_home
+import common as c
 
 cmd_timestamp = None
 
@@ -17,7 +17,7 @@ cmd_timestamp = None
 def run(benchmark):
     global cmd_timestamp
 
-    gem5_dir = gem5_home()
+    gem5_dir = c.gem5_home()
     outdir = pjoin(uexp('~/gem5-results/simpoint-profile'), benchmark)
 
     if not os.path.isdir(outdir):
@@ -32,7 +32,7 @@ def run(benchmark):
                     benchmark))
                 return
 
-    exec_dir = os.environ['gem5_run_dir']
+    exec_dir = c.gem5_exec()
     os.chdir(exec_dir)
 
     options = [
@@ -51,7 +51,7 @@ def run(benchmark):
             '--mem-size=4GB',
             ]
     print(options)
-    gem5 = sh.Command(pjoin(os.environ['gem5_build'], 'gem5.opt'))
+    gem5 = sh.Command(pjoin(c.gem5_build(), 'gem5.opt'))
     # sys.exit(0)
     gem5(
             _out=pjoin(outdir, 'gem5_out.txt'),

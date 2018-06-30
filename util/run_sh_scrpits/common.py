@@ -38,6 +38,8 @@ def avoid_repeated(func, outdir, *args, **kwargs):
     else:
         print('{} is older than {}, skip!'.format(out_ts_file,
             script_ts_file))
+        if os.path.isfile(running_lock_file):
+            sh.rm(running_lock_file)
 
 
 def gem5_home():
@@ -48,3 +50,7 @@ def gem5_home():
 
 def gem5_build():
     return pjoin(gem5_home(), 'build/ARM')
+
+
+def gem5_exec():
+    return os.environ['gem5_run_dir']

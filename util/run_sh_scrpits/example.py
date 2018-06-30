@@ -12,11 +12,10 @@ from multiprocessing import Pool
 import common as c
 
 
-outdir = '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-arm-gcc-4.8'
-simpoint_profile_dir = uexp('~/gem5-results/simpoint-profile')
+outdir = '/ramdisk/zyy/gem5_run/results/test'
 
 
-def take_cpt_for_benchmark(benchmark, simpoint_file, weight_file, outdir_b):
+def example_to_run_batch(benchmark, some_extra_args, outdir_b):
 
     gem5_dir = c.gem5_home()
 
@@ -35,10 +34,9 @@ def take_cpt_for_benchmark(benchmark, simpoint_file, weight_file, outdir_b):
             '--benchmark-stdout={}/out'.format(outdir_b),
             '--benchmark-stderr={}/err'.format(outdir_b),
             '--cpu-type=AtomicSimpleCPU',
+            '-I {}'.format(1*10**6),
             '--fastmem',
             '--mem-size=4GB',
-            '--take-simpoint-checkpoint={},{},{},{}'.format(
-                simpoint_file, weight_file, interval, warmup)
             ]
     print(options)
     gem5 = sh.Command(pjoin(c.gem5_build(), 'gem5.opt'))
@@ -55,29 +53,23 @@ def run(benchmark):
     if not os.path.isdir(outdir_b):
         os.makedirs(outdir_b)
 
-    simpoint_dir_b = pjoin(simpoint_profile_dir, benchmark)
+    prerequisite = True
+    some_extra_args = None
 
-    simpoint_file = pjoin(simpoint_dir_b, 'simpoints-final')
-    weight_file = pjoin(simpoint_dir_b, 'weights-final')
-
-    profiled = os.path.isfile(simpoint_file) and os.path.isfile(weight_file)
-
-    if profiled:
-        print('simpoint weight file found in {},'.format(simpoint_dir_b),
-                'is going take simpoint cpt')
-        c.avoid_repeated(take_cpt_for_benchmark, outdir_b,
-                benchmark, simpoint_file, weight_file, outdir_b)
+    if prerequisite:
+        print('prerequisite satisified, is going to run gem5 on', benchmark)
+        c.avoid_repeated(example_to_run_batch, outdir_b,
+                benchmark, some_extra_args, outdir_b)
     else:
-        print('simpoint weight file not found in {}, abort'.format(
-            simpoint_dir_b))
+        print('prerequisite not satisified, abort on', benchmark)
 
 
 def main():
-    num_thread = 27
+    num_thread = 2
 
     benchmarks = []
 
-    with open('./all_compiled_spec.txt') as f:
+    with open('./tmp_spec.txt') as f:
         for line in f:
             benchmarks.append(line.strip())
 
