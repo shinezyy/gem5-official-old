@@ -18,7 +18,6 @@ def run(benchmark):
 
     gem5_dir = os.environ['gem5_root']
     outdir = pjoin(uexp('~/gem5-results/simpoint-profile'), benchmark)
-    cpt_dir = pjoin('/home/share/st_checkpoint', benchmark)
 
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
