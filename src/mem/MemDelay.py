@@ -1,4 +1,4 @@
-# Copyright (c) 2017 ARM Limited
+# Copyright (c) 2018 ARM Limited
 # All rights reserved.
 #
 # The license below extends only to copyright in the software and shall
@@ -35,51 +35,23 @@
 #
 # Authors: Andreas Sandberg
 
-from abc import *
+from m5.params import *
+from MemObject import MemObject
 
-class PyBindExport(object):
-    __metaclass__ = ABCMeta
+class MemDelay(MemObject):
+    type = 'MemDelay'
+    cxx_header = 'mem/mem_delay.hh'
+    abstract = True
 
-    @abstractmethod
-    def export(self, code, cname):
-        pass
+    master = MasterPort("Master port")
+    slave = SlavePort("Slave port")
 
-class PyBindProperty(PyBindExport):
-    def __init__(self, name, cxx_name=None, writable=True):
-        self.name = name
-        self.cxx_name = cxx_name if cxx_name else name
-        self.writable = writable
+class SimpleMemDelay(MemDelay):
+    type = 'SimpleMemDelay'
+    cxx_header = 'mem/mem_delay.hh'
 
-    def export(self, code, cname):
-        export = "def_readwrite" if self.writable else "def_readonly"
-        code('.${export}("${{self.name}}", &${cname}::${{self.cxx_name}})')
+    read_req = Param.Latency("0t", "Read request delay")
+    read_resp = Param.Latency("0t", "Read response delay")
 
-class PyBindMethod(PyBindExport):
-    def __init__(self, name, cxx_name=None, args=None):
-        self.name = name
-        self.cxx_name = cxx_name if cxx_name else name
-        self.args = args
-
-    def _conv_arg(self, value):
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        elif isinstance(value, (float, int)):
-            return repr(value)
-        else:
-            raise TypeError("Unsupported PyBind default value type")
-
-    def export(self, code, cname):
-        if self.args:
-            def get_arg_decl(arg):
-                if isinstance(arg, tuple):
-                    name, default = arg
-                    return 'py::arg("%s") = %s' % (
-                        name, self._conv_arg(default))
-                else:
-                    return 'py::arg("%s")' % arg
-
-            code('.def("${{self.name}}", &${cname}::${{self.name}}, ')
-            code('    ' + \
-                 ', '.join([ get_arg_decl(a) for a in self.args ]) + ')')
-        else:
-            code('.def("${{self.name}}", &${cname}::${{self.cxx_name}})')
+    write_req = Param.Latency("0t", "Write request delay")
+    write_resp = Param.Latency("0t", "Write response delay")
