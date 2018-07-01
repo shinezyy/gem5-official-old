@@ -54,3 +54,7 @@ def gem5_build():
 
 def gem5_exec():
     return os.environ['gem5_run_dir']
+
+
+def gem5_cpt_dir():
+    return os.environ['cpt_dir']
