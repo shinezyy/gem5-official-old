@@ -48,6 +48,7 @@
 #include "cpu/o3/inst_queue.hh"
 #include "cpu/o3/mem_dep_unit.hh"
 #include "debug/MemDepUnit.hh"
+#include "debug/TwoPhaseMDU.hh"
 #include "params/DerivO3CPU.hh"
 
 template <class MemDepPred, class Impl>
@@ -280,9 +281,13 @@ MemDepUnit<MemDepPred, Impl>::insertNonSpec(DynInstPtr &inst)
 #ifdef DEBUG
     MemDepEntry::memdep_insert++;
 #endif
+    DPRINTF(TwoPhaseMDU, "insertNonSpec inst[sn:%lli] into HT\n",
+            inst->seqNum);
+    dumpHash();
 
     // Add the instruction to the list.
     instList[tid].push_back(inst);
+    DPRINTF(TwoPhaseMDU, "insertNonSpec inst[sn:%lli]\n", inst->seqNum);
 
     inst_entry->listIt = --(instList[tid].end());
 
@@ -328,12 +333,17 @@ MemDepUnit<MemDepPred, Impl>::insertBarrier(DynInstPtr &barr_inst)
     // Add the MemDepEntry to the hash.
     memDepHash.insert(
         std::pair<InstSeqNum, MemDepEntryPtr>(barr_sn, inst_entry));
+
+    DPRINTF(TwoPhaseMDU, "insert barrier inst[sn:%lli] into HT\n",
+            barr_inst->seqNum);
+    dumpHash();
 #ifdef DEBUG
     MemDepEntry::memdep_insert++;
 #endif
 
     // Add the instruction to the instruction list.
     instList[tid].push_back(barr_inst);
+    DPRINTF(TwoPhaseMDU, "insert barrier inst[sn:%lli]\n", barr_inst->seqNum);
 
     inst_entry->listIt = --(instList[tid].end());
 }
@@ -610,5 +620,18 @@ MemDepUnit<MemDepPred, Impl>::dumpLists()
     cprintf("Memory dependence entries: %i\n", MemDepEntry::memdep_count);
 #endif
 }
+
+template <class MemDepPred, class Impl>
+    void
+MemDepUnit<MemDepPred, Impl>::dumpHash()
+{
+    if (Debug::TwoPhaseMDU) {
+        for (auto it: memDepHash) {
+            std::cout << it.first << " " << it.second->inst->seqNum << "\n";
+        }
+        DPRINTF(TwoPhaseMDU, "Dump finished\n");
+    }
+}
+
 
 #endif//__CPU_O3_MEM_DEP_UNIT_IMPL_HH__

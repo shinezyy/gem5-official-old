@@ -162,6 +162,8 @@ class MemDepUnit
     /** Debugging function to dump the lists of instructions. */
     void dumpLists();
 
+    void dumpHash();
+
   private:
     typedef typename std::list<DynInstPtr>::iterator ListIt;
 
