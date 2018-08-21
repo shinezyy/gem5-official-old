@@ -36,13 +36,19 @@ High-level flow for submitting changes
            |
            |
            v
-    +------+------+
-    | Post review |
-    +------+------+
-           |
-           v
-    +--------+---------+
-    | Wait for reviews | <--------+
+    +-------------+
+    |  Run tests  |<--------------+
+    +------+------+               |
+           |                      |
+           |                      |
+           v                      |
+    +------+------+               |
+    | Post review |               |
+    +------+------+               |
+           |                      |
+           v                      |
+    +--------+---------+          |
+    | Wait for reviews |          |
     +--------+---------+          |
            |                      |
            |                      |
@@ -178,6 +184,13 @@ commit (HEAD).
  git commit --amend
 ```
 
+Running tests
+=============
+
+Before posting a change to the code review site, you should always run the
+quick tests!
+See TESTING.md for more information.
+
 Posting a review
 ================
 
@@ -244,12 +257,20 @@ changeset.
  git commit --amend
 ```
 
-Push change to gerrit as a draft
---------------------------------
+Push change to gerrit as a draft/private
+----------------------------------------
+
+See https://gerrit-review.googlesource.com/Documentation/intro-user.html#private-changes
+for details on private gerrit changes.
 
 ```
- git push origin HEAD:refs/drafts/master
+ git push origin HEAD:refs/for/master%private
 ```
+
+Once you have pushed your change as "private", you can log onto [gerrit]
+(https://gem5-review.googlesource.com) and once you're happy with the commit
+click the "unmark private" which may be hidden in the "more options" dropdown
+in the upper right corner.
 
 Push change bypassing gerrit
 -----------------------------

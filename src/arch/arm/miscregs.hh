@@ -668,14 +668,14 @@ namespace ArmISA
 
         // Introduced in ARMv8.1
         MISCREG_TTBR1_EL2,              // 600
+        MISCREG_CNTHV_CTL_EL2,          // 601
+        MISCREG_CNTHV_CVAL_EL2,         // 602
+        MISCREG_CNTHV_TVAL_EL2,         // 603
 
         // These MISCREG_FREESLOT are available Misc Register
         // slots for future registers to be implemented.
-        MISCREG_FREESLOT_1,             // 601
-        MISCREG_FREESLOT_2,             // 602
-        MISCREG_FREESLOT_3,             // 603
-        MISCREG_FREESLOT_4,             // 604
-        MISCREG_FREESLOT_5,             // 605
+        MISCREG_FREESLOT_1,             // 604
+        MISCREG_FREESLOT_2,             // 605
 
         // NUM_PHYS_MISCREGS specifies the number of actual physical
         // registers, not considering the following pseudo-registers
@@ -695,6 +695,19 @@ namespace ArmISA
         // a pool of unimplemented registers whose access can throw
         // either UNDEFINED or hypervisor trap exception.
         MISCREG_IMPDEF_UNIMPL,
+
+        // RAS extension (unimplemented)
+        MISCREG_ERRIDR_EL1,
+        MISCREG_ERRSELR_EL1,
+        MISCREG_ERXFR_EL1,
+        MISCREG_ERXCTLR_EL1,
+        MISCREG_ERXSTATUS_EL1,
+        MISCREG_ERXADDR_EL1,
+        MISCREG_ERXMISC0_EL1,
+        MISCREG_ERXMISC1_EL1,
+        MISCREG_DISR_EL1,
+        MISCREG_VSESR_EL2,
+        MISCREG_VDISR_EL2,
 
         // Total number of Misc Registers: Physical + Dummy
         NUM_MISCREGS
@@ -1372,11 +1385,11 @@ namespace ArmISA
         "contextidr_el2",
 
         "ttbr1_el2",
+        "cnthv_ctl_el2",
+        "cnthv_cval_el2",
+        "cnthv_tval_el2",
         "freeslot1",
         "freeslot2",
-        "freeslot3",
-        "freeslot4",
-        "freeslot5",
 
         "num_phys_regs",
 
@@ -1386,7 +1399,18 @@ namespace ArmISA
         "cp14_unimpl",
         "cp15_unimpl",
         "unknown",
-        "impl_defined"
+        "impl_defined",
+        "erridr_el1",
+        "errselr_el1",
+        "erxfr_el1",
+        "erxctlr_el1",
+        "erxstatus_el1",
+        "erxaddr_el1",
+        "erxmisc0_el1",
+        "erxmisc1_el1",
+        "disr_el1",
+        "vsesr_el2",
+        "vdisr_el2",
     };
 
     static_assert(sizeof(miscRegName) / sizeof(*miscRegName) == NUM_MISCREGS,
