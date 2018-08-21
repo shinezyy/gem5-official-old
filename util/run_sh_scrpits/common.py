@@ -49,7 +49,7 @@ def gem5_home():
 
 
 def gem5_build():
-    return pjoin(gem5_home(), 'build/ARM')
+    return pjoin(gem5_home(), 'build/RISCV')
 
 
 def gem5_exec():

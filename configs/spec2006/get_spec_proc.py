@@ -18,7 +18,8 @@ class Spec06:
 
         self.spec_dir = os.environ['cpu_2006_dir']+'/'
         # self.suffix = '_base.gcc-alpha-4.3'
-        self.suffix = '_base.gcc-arm64-4.8.0'
+        # self.suffix = '_base.gcc-arm64-4.8.0'
+        self.suffix = '_base.gcc-riscv64-gnu-8.2.0'
         self.pid_idx = 0
 
 

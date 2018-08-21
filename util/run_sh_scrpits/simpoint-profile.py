@@ -18,7 +18,9 @@ def run(benchmark):
     global cmd_timestamp
 
     gem5_dir = c.gem5_home()
-    outdir = pjoin(uexp('~/gem5-results/simpoint-profile'), benchmark)
+    outdir = pjoin('/ramdisk/zyy/gem5_run/'
+            'spec-simpoint-cpt-riscv-gcc-gnu-8.2.0',
+            benchmark)
 
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
@@ -47,8 +49,8 @@ def run(benchmark):
             '--fastmem',
             '--simpoint-profile',
             '--simpoint-interval={}'.format(200*10**6),
-            '-I {}'.format(1000*10**9),
-            '--mem-size=4GB',
+            '-I {}'.format(800*10**9),
+            '--mem-size=8GB',
             ]
     print(options)
     gem5 = sh.Command(pjoin(c.gem5_build(), 'gem5.opt'))
