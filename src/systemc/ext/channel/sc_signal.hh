@@ -31,6 +31,8 @@
 #define __SYSTEMC_EXT_CHANNEL_SC_SIGNAL_HH__
 
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "../core/sc_module.hh" // for sc_gen_unique_name
 #include "../core/sc_prim.hh"
@@ -41,6 +43,22 @@ namespace sc_core
 {
 
 class sc_port_base;
+class sc_trace_file;
+
+// Nonstandard
+// Despite having a warning "FOR INTERNAL USE ONLY!" in all caps above this
+// class definition in the Accellera implementation, it appears in their
+// examples and test programs, and so we need to have it here as well.
+struct sc_trace_params
+{
+    sc_trace_file *tf;
+    std::string name;
+
+    sc_trace_params(sc_trace_file *tf, const std::string &name) :
+        tf(tf), name(name)
+    {}
+};
+typedef std::vector<sc_trace_params *> sc_trace_params_vec;
 
 template <class T, sc_writer_policy WRITER_POLICY=SC_ONE_WRITER>
 class sc_signal : public sc_signal_inout_if<T>,
@@ -53,6 +71,12 @@ class sc_signal : public sc_signal_inout_if<T>,
     explicit sc_signal(const char *name) : sc_signal_inout_if<T>(),
                                            sc_prim_channel(name)
     {}
+    explicit sc_signal(const char *name, const T &initial_value) :
+        sc_signal_inout_if<T>(), sc_prim_channel(name)
+    {
+        // Need to consume initial_value.
+        sc_channel_warn_unimpl(__PRETTY_FUNCTION__);
+    }
     virtual ~sc_signal() {}
 
     virtual void
@@ -160,6 +184,12 @@ class sc_signal<bool, WRITER_POLICY> :
     }
     explicit sc_signal(const char *)
     {
+        sc_channel_warn_unimpl(__PRETTY_FUNCTION__);
+    }
+    explicit sc_signal(const char *name, const bool &initial_value) :
+        sc_signal_inout_if<bool>(), sc_prim_channel(name)
+    {
+        // Need to consume initial_value.
         sc_channel_warn_unimpl(__PRETTY_FUNCTION__);
     }
     virtual ~sc_signal()
@@ -290,6 +320,13 @@ class sc_signal<sc_dt::sc_logic, WRITER_POLICY> :
     }
     explicit sc_signal(const char *)
     {
+        sc_channel_warn_unimpl(__PRETTY_FUNCTION__);
+    }
+    explicit sc_signal(const char *name,
+            const sc_dt::sc_logic &initial_value) :
+        sc_signal_inout_if<sc_dt::sc_logic>(), sc_prim_channel(name)
+    {
+        // Need to consume initial_value.
         sc_channel_warn_unimpl(__PRETTY_FUNCTION__);
     }
     virtual ~sc_signal()

@@ -36,6 +36,13 @@
 #include "sc_sensitive.hh"
 #include "sc_time.hh"
 
+namespace sc_dt
+{
+
+class sc_logic;
+
+} // namespace sc_dt
+
 namespace sc_core
 {
 
@@ -141,6 +148,10 @@ class sc_module : public sc_object
     sc_module(const sc_module_name &);
     sc_module();
 
+    // Deprecated
+    sc_module(const char *);
+    sc_module(const std::string &);
+
     /* Deprecated, but used in the regression tests. */
     void end_module() {}
 
@@ -172,6 +183,9 @@ class sc_module : public sc_object
     void next_trigger(const sc_time &, const sc_event_and_list &);
     void next_trigger(double, sc_time_unit, const sc_event_and_list &);
 
+    // Nonstandard
+    bool timed_out();
+
     void wait();
     void wait(int);
     void wait(const sc_event &);
@@ -185,6 +199,13 @@ class sc_module : public sc_object
     void wait(double, sc_time_unit, const sc_event_or_list &);
     void wait(const sc_time &, const sc_event_and_list &);
     void wait(double, sc_time_unit, const sc_event_and_list &);
+
+    // Nonstandard
+    void halt();
+    void at_posedge(const sc_signal_in_if<bool> &);
+    void at_posedge(const sc_signal_in_if<sc_dt::sc_logic> &);
+    void at_negedge(const sc_signal_in_if<bool> &);
+    void at_negedge(const sc_signal_in_if<sc_dt::sc_logic> &);
 
     virtual void before_end_of_elaboration() {}
     virtual void end_of_elaboration() {}
@@ -224,6 +245,9 @@ void wait(double, sc_time_unit, const sc_event_or_list &);
 void wait(const sc_time &, const sc_event_and_list &);
 void wait(double, sc_time_unit, const sc_event_and_list &);
 
+// Nonstandard
+bool timed_out();
+
 #define SC_MODULE(name) struct name : ::sc_core::sc_module
 
 #define SC_CTOR(name) \
@@ -236,13 +260,45 @@ void wait(double, sc_time_unit, const sc_event_and_list &);
 #define SC_THREAD(name) /* Implementation defined */
 #define SC_CTHREAD(name, clk) /* Implementation defined */
 
+// Nonstandard
+// Documentation for this is very scarce, but it looks like it's supposed to
+// stop the currently executing cthread, or if a cthread isn't running report
+// an error.
+void halt();
+void at_posedge(const sc_signal_in_if<bool> &);
+void at_posedge(const sc_signal_in_if<sc_dt::sc_logic> &);
+void at_negedge(const sc_signal_in_if<bool> &);
+void at_negedge(const sc_signal_in_if<sc_dt::sc_logic> &);
+
 const char *sc_gen_unique_name(const char *);
+
+// Nonstandard
+bool sc_hierarchical_name_exists(const char *name);
 
 typedef sc_module sc_behavior;
 typedef sc_module sc_channel;
 
 bool sc_start_of_simulation_invoked();
 bool sc_end_of_simulation_invoked();
+
+// Nonstandard
+// Allocates a module of type x and records a pointer to it so that it gets
+// destructed automatically at the end of the simulation.
+sc_module *sc_module_sc_new(sc_module *);
+#define SC_NEW(x) ::sc_core::sc_module_sc_new(new x);
+
+// Nonstandard
+// In the Accellera implementation, this macro calls sc_set_location to record
+// the current file and line, calls wait, and then calls it again to clear the
+// file and line. We'll ignore the sc_set_location calls for now.
+#define SC_WAIT() ::sc_core::wait();
+
+// Nonstandard
+// Same as above, but passes through an argument.
+#define SC_WAITN(n) ::sc_core::wait(n);
+
+// Nonstandard
+#define SC_WAIT_UNTIL(expr) do { SC_WAIT(); } while (!(expr))
 
 } // namespace sc_core
 

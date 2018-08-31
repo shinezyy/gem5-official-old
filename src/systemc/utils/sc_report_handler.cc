@@ -47,6 +47,13 @@ sc_report_handler::report(sc_severity, const char *msg_type, const char *msg,
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
 }
 
+void
+sc_report_handler::report(sc_severity, int id, const char *msg,
+                          const char *file, int line)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
 sc_actions
 sc_report_handler::set_actions(sc_severity, sc_actions)
 {
@@ -154,6 +161,21 @@ sc_report_handler::force()
 }
 
 
+sc_actions
+sc_report_handler::set_catch_actions(sc_actions)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+    return SC_UNSPECIFIED;
+}
+
+sc_actions
+sc_report_handler::get_catch_actions()
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+    return SC_UNSPECIFIED;
+}
+
+
 void
 sc_report_handler::set_handler(sc_report_handler_proc)
 {
@@ -210,6 +232,20 @@ void
 sc_stop_here(const char *msg_type, sc_severity)
 {
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+const std::string
+sc_report_compose_message(const sc_report &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+    return "";
+}
+
+bool
+sc_report_close_default_log()
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+    return false;
 }
 
 } // namespace sc_core

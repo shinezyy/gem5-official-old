@@ -66,11 +66,44 @@ class sc_unwind_exception : public std::exception
     virtual const char *what() const throw();
     virtual bool is_reset() const;
 
-  protected:
-    sc_unwind_exception();
+    // Nonstandard.
+    // These should be protected, but I think this is to enable catch by
+    // value.
+  public:
     sc_unwind_exception(const sc_unwind_exception &);
     virtual ~sc_unwind_exception() throw();
+
+  protected:
+    sc_unwind_exception();
 };
+
+// Deprecated
+// An incomplete version of sc_process_b to satisfy the tests.
+class sc_process_b
+{
+  public:
+    const char *file;
+    int lineno;
+    const char *name();
+    const char *kind();
+};
+
+// Deprecated
+sc_process_b *sc_get_curr_process_handle();
+static inline sc_process_b *
+sc_get_current_process_b()
+{
+    return sc_get_curr_process_handle();
+}
+
+// Deprecated/nonstandard
+struct sc_curr_proc_info
+{
+    sc_process_b *process_handle;
+    sc_curr_proc_kind kind;
+    sc_curr_proc_info() : process_handle(NULL), kind(SC_NO_PROC_) {}
+};
+typedef const sc_curr_proc_info *sc_curr_proc_handle;
 
 class sc_process_handle
 {
@@ -144,6 +177,12 @@ class sc_process_handle
 
 sc_process_handle sc_get_current_process_handle();
 bool sc_is_unwinding();
+
+// Nonstandard
+// See Accellera's kernel/sim_context.cpp for an explanation of what this is
+// supposed to do. It essentially selects what happens during certain
+// undefined situations.
+extern bool sc_allow_process_control_corners;
 
 } // namespace sc_core
 

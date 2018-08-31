@@ -40,6 +40,7 @@ namespace sc_core
 class sc_event;
 class sc_attr_base;
 class sc_attr_cltn;
+class sc_simcontext;
 
 class sc_object
 {
@@ -63,6 +64,10 @@ class sc_object
     int num_attributes() const;
     sc_attr_cltn &attr_cltn();
     const sc_attr_cltn &attr_cltn() const;
+
+    // Deprecated
+    sc_simcontext *
+    simcontext() const;
 
   protected:
     sc_object();

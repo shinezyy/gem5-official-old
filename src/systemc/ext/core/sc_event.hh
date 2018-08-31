@@ -40,6 +40,7 @@ namespace sc_core
 class sc_event;
 class sc_event_and_expr;
 class sc_event_or_expr;
+class sc_interface;
 class sc_object;
 class sc_port_base;
 
@@ -47,6 +48,10 @@ class sc_event_finder
 {
   protected:
     void warn_unimpl(const char *func) const;
+
+  public:
+    // Should be "implementation defined" but used in the tests.
+    virtual const sc_event &find_event(sc_interface *if_p=NULL) const = 0;
 };
 
 template <class IF>
@@ -57,6 +62,13 @@ class sc_event_finder_t : public sc_event_finder
                       const sc_event & (IF::*event_method)() const)
     {
         warn_unimpl(__PRETTY_FUNCTION__);
+    }
+
+    const sc_event &
+    find_event(sc_interface *if_p=NULL) const override
+    {
+        warn_unimpl(__PRETTY_FUNCTION__);
+        return *(const sc_event *)nullptr;
     }
 };
 
@@ -131,6 +143,14 @@ class sc_event
     void notify(const sc_time &);
     void notify(double, sc_time_unit);
     void cancel();
+
+    // Nonstandard
+    // Returns whether this event is currently triggered.
+    bool triggered() const;
+
+    // Deprecated
+    void notify_delayed();
+    void notify_delayed(const sc_time &);
 
     sc_event_and_expr operator & (const sc_event &) const;
     sc_event_and_expr operator & (const sc_event_and_list &) const;

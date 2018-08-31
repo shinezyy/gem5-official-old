@@ -27,6 +27,9 @@
  * Authors: Gabe Black
  */
 
+#include <memory>
+#include <vector>
+
 #include "base/logging.hh"
 #include "systemc/ext/core/sc_module.hh"
 
@@ -148,6 +151,16 @@ sc_module::sc_module(const sc_module_name &)
 }
 
 sc_module::sc_module()
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+sc_module::sc_module(const char *)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+sc_module::sc_module(const std::string &)
 {
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
 }
@@ -288,6 +301,14 @@ sc_module::next_trigger(double, sc_time_unit, const sc_event_and_list &)
 }
 
 
+bool
+sc_module::timed_out()
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+    return false;
+}
+
+
 void
 sc_module::wait()
 {
@@ -368,6 +389,37 @@ sc_module::wait(double, sc_time_unit, const sc_event_and_list &)
 
 
 void
+sc_module::halt()
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+sc_module::at_posedge(const sc_signal_in_if<bool> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+sc_module::at_posedge(const sc_signal_in_if<sc_dt::sc_logic> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+sc_module::at_negedge(const sc_signal_in_if<bool> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+sc_module::at_negedge(const sc_signal_in_if<sc_dt::sc_logic> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+
+void
 next_trigger()
 {
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
@@ -437,6 +489,13 @@ void
 next_trigger(double, sc_time_unit, const sc_event_and_list &)
 {
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+bool
+timed_out()
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+    return false;
 }
 
 
@@ -518,11 +577,48 @@ wait(double, sc_time_unit, const sc_event_and_list &)
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
 }
 
+void
+halt()
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+at_posedge(const sc_signal_in_if<bool> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+at_posedge(const sc_signal_in_if<sc_dt::sc_logic> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+at_negedge(const sc_signal_in_if<bool> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
+void
+at_negedge(const sc_signal_in_if<sc_dt::sc_logic> &)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+}
+
 const char *
 sc_gen_unique_name(const char *)
 {
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
     return "";
+}
+
+bool
+sc_hierarchical_name_exists(const char *name)
+{
+    warn("%s not implemented.\n", __PRETTY_FUNCTION__);
+    return false;
 }
 
 bool
@@ -537,6 +633,14 @@ sc_end_of_simulation_invoked()
 {
     warn("%s not implemented.\n", __PRETTY_FUNCTION__);
     return false;
+}
+
+sc_module *
+sc_module_sc_new(sc_module *mod)
+{
+    static std::vector<std::unique_ptr<sc_module> > modules;
+    modules.emplace_back(mod);
+    return mod;
 }
 
 } // namespace sc_core
