@@ -1,16 +1,12 @@
-GemsFDTD
 hmmer
-sphinx3
 gobmk
 cactusADM
-bwaves
 lbm
 bzip2
 leslie3d
 gromacs
 sjeng
 astar
-zeusmp
 povray
 omnetpp
 mcf
@@ -21,4 +17,6 @@ namd
 libquantum
 gamess
 soplex
+dealII
+xalancbmk
 milc

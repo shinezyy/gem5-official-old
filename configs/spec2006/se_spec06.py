@@ -64,6 +64,7 @@ from common.Caches import *
 from common.cpu2000 import *
 
 from get_spec_proc import Spec06
+from SSOptions import addSSOptions
 
 # Check if KVM support has been enabled, we might need to do VM
 # configuration if that's the case.
@@ -83,11 +84,20 @@ def get_one_spec_2006_process(spec06_obj, benchmark_name):
         sys.exit(1)
 
 
+arch_suffix = {
+        'ARM': '_base.gcc-arm64-4.8.0',
+        'RISCV': '_base.gcc-riscv64-gnu-8.2.0',
+        }
+
+
 def get_spec_2006_processes(options):
-    spec06 = Spec06()
     benchmarks = options.benchmark.split(';')
     stdouts = options.benchmark_stdout.split(';')
     stderrs = options.benchmark_stderr.split(';')
+    if not options.arch:
+        print("No Arch(ARM, RISCV) specified. Exiting!\n", file=sys.stderr)
+        sys.exit(1)
+    spec06 = Spec06(arch_suffix[options.arch])
     num_processes = len(benchmarks)
     multiprocesses = []
     assert len(stderrs) == len(benchmarks)
@@ -159,6 +169,7 @@ def get_processes(options):
 parser = optparse.OptionParser()
 Options.addCommonOptions(parser)
 Options.addSEOptions(parser)
+addSSOptions(parser)
 
 if '--ruby' in sys.argv:
     Ruby.define_options(parser)

@@ -48,13 +48,17 @@ def gem5_home():
     return '/'.join(paths[:-2])  # delete '/util/run_sh_scrpits'
 
 
-def gem5_build():
-    return pjoin(gem5_home(), 'build/RISCV')
+def gem5_build(arch):
+    return pjoin(gem5_home(), 'build/{}'.format(arch))
 
 
 def gem5_exec():
     return os.environ['gem5_run_dir']
 
 
-def gem5_cpt_dir():
-    return os.environ['cpt_dir']
+def gem5_cpt_dir(arch):
+    cpt_dirs = {
+            'ARM': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-arm-gcc-4.8',
+            'RISCV': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-riscv-gcc-8.2',
+            }
+    return cpt_dirs[arch]
