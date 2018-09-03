@@ -111,16 +111,21 @@ class DerivO3CPU(BaseCPU):
     trapLatency = Param.Cycles(13, "Trap latency")
     fetchTrapLatency = Param.Cycles(1, "Fetch trap latency")
 
-    backComSize = Param.Unsigned(5, "Time buffer size for backwards communication")
-    forwardComSize = Param.Unsigned(5, "Time buffer size for forward communication")
+    backComSize = Param.Unsigned(5,
+            "Time buffer size for backwards communication")
+    forwardComSize = Param.Unsigned(5,
+            "Time buffer size for forward communication")
 
-    LQEntries = Param.Unsigned(32, "Number of load queue entries")
-    SQEntries = Param.Unsigned(32, "Number of store queue entries")
-    LSQDepCheckShift = Param.Unsigned(4, "Number of places to shift addr before check")
+    LQEntries = Param.Unsigned(72, "Number of load queue entries")
+    SQEntries = Param.Unsigned(56, "Number of store queue entries")
+    LSQDepCheckShift = Param.Unsigned(4,
+            "Number of places to shift addr before check")
     LSQCheckLoads = Param.Bool(True,
-        "Should dependency violations be checked for loads & stores or just stores")
+        "Should dependency violations be checked"
+        " for loads & stores or just stores")
     store_set_clear_period = Param.Unsigned(250000,
-            "Number of load/store insts before the dep predictor should be invalidated")
+            "Number of load/store insts before"
+            " the dep predictor should be invalidated")
     LFSTSize = Param.Unsigned(1024, "Last fetched store table size")
     SSITSize = Param.Unsigned(1024, "Store set ID table size")
 
@@ -143,8 +148,8 @@ class DerivO3CPU(BaseCPU):
                                       "registers")
     numPhysCCRegs = Param.Unsigned(_defaultNumPhysCCRegs,
                                    "Number of physical cc registers")
-    numIQEntries = Param.Unsigned(64, "Number of instruction queue entries")
-    numROBEntries = Param.Unsigned(192, "Number of reorder buffer entries")
+    numIQEntries = Param.Unsigned(96, "Number of instruction queue entries")
+    numROBEntries = Param.Unsigned(224, "Number of reorder buffer entries")
 
     smtNumFetchingThreads = Param.Unsigned(1, "SMT Number of Fetching Threads")
     smtFetchPolicy = Param.String('SingleThread', "SMT Fetch policy")
