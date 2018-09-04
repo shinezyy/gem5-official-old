@@ -47,6 +47,7 @@ from os.path import join as joinpath
 
 from common import CpuConfig
 from common import MemConfig
+from common import SSConfig
 
 import m5
 from m5.defines import buildEnv
@@ -478,6 +479,9 @@ def run(options, root, testsys, cpu_class):
             # Add checker cpu if selected
             if options.checker:
                 switch_cpus[i].addCheckerCpu()
+
+            # O3 Config
+            SSConfig.modifyO3CPUConfig(options, switch_cpus[i])
 
         # If elastic tracing is enabled attach the elastic trace probe
         # to the switch CPUs

@@ -60,11 +60,10 @@ from common import Simulation
 from common import CacheConfig
 from common import CpuConfig
 from common import MemConfig
+from common import SSOptions
 from common.Caches import *
-from common.cpu2000 import *
 
 from get_spec_proc import Spec06
-from SSOptions import addSSOptions
 
 # Check if KVM support has been enabled, we might need to do VM
 # configuration if that's the case.
@@ -169,7 +168,8 @@ def get_processes(options):
 parser = optparse.OptionParser()
 Options.addCommonOptions(parser)
 Options.addSEOptions(parser)
-addSSOptions(parser)
+SSOptions.addSSOptions(parser)
+SSOptions.addO3Options(parser)
 
 if '--ruby' in sys.argv:
     Ruby.define_options(parser)
@@ -213,6 +213,7 @@ else:
 
 
 (CPUClass, test_mem_mode, FutureClass) = Simulation.setCPUClass(options)
+print(CPUClass, FutureClass)
 CPUClass.numThreads = numThreads
 
 # Check -- do not allow SMT with multiple CPUs
@@ -252,6 +253,7 @@ if options.elastic_trace_en:
 # frequency.
 for cpu in system.cpu:
     cpu.clk_domain = system.cpu_clk_domain
+
 
 if is_kvm_cpu(CPUClass) or is_kvm_cpu(FutureClass):
     if buildEnv['TARGET_ISA'] == 'x86':

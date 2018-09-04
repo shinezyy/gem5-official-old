@@ -24,9 +24,6 @@ def two_phase_issue(benchmark, some_extra_args, outdir_b):
     os.chdir(c.gem5_exec())
 
     options = [
-            # '--debug-flags=RegMark,TwoPhaseIssue,SSDepGraph,PostponedWake',
-            # '--debug-flags=TwoPhaseMDU',
-            # '--debug-start=46783413139500',
             '--outdir=' + outdir_b,
             pjoin(c.gem5_home(), 'configs/spec2006/se_spec06.py'),
             '--spec-2006-bench',
@@ -35,7 +32,6 @@ def two_phase_issue(benchmark, some_extra_args, outdir_b):
             '--benchmark-stdout={}/out'.format(outdir_b),
             '--benchmark-stderr={}/err'.format(outdir_b),
             '-I {}'.format(200*10**6),
-            # '--rel-max-tick={}'.format(516000//500),
             '--mem-size=4GB',
             '-r 1',
             '--restore-simpoint-checkpoint',
@@ -65,6 +61,10 @@ def two_phase_issue(benchmark, some_extra_args, outdir_b):
             '--l2cache',
             '--l2_size=4MB',
             '--l2_assoc=8',
+            '--num-ROB=300',
+            '--num-IQ=96',
+            '--num-LQ=100',
+            '--num-SQ=100',
             ]
     else:
         assert False
