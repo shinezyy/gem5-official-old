@@ -473,6 +473,7 @@ class DefaultRename
         IQ,
         LQ,
         SQ,
+        Register,
         NONE
     };
 

@@ -1206,15 +1206,23 @@ DefaultRename<Impl>::checkStall(ThreadID tid)
         ret_val = true;
     } else if (calcFreeROBEntries(tid) <= 0) {
         DPRINTF(Rename,"[tid:%i]: Stall: ROB has 0 free entries.\n", tid);
+        incrFullStat(FullSource::ROB);
         ret_val = true;
     } else if (calcFreeIQEntries(tid) <= 0) {
         DPRINTF(Rename,"[tid:%i]: Stall: IQ has 0 free entries.\n", tid);
+        incrFullStat(FullSource::IQ);
         ret_val = true;
     } else if (calcFreeLQEntries(tid) <= 0 && calcFreeSQEntries(tid) <= 0) {
         DPRINTF(Rename,"[tid:%i]: Stall: LSQ has 0 free entries.\n", tid);
+        if (calcFreeLQEntries(tid) <= 0) {
+            incrFullStat(FullSource::LQ);
+        } else {
+            incrFullStat(FullSource::SQ);
+        }
         ret_val = true;
     } else if (renameMap[tid]->numFreeEntries() <= 0) {
         DPRINTF(Rename,"[tid:%i]: Stall: RenameMap has 0 free entries.\n", tid);
+        incrFullStat(FullSource::Register);
         ret_val = true;
     } else if (renameStatus[tid] == SerializeStall &&
                (!emptyROB[tid] || instsInProgress[tid])) {
@@ -1392,6 +1400,9 @@ DefaultRename<Impl>::incrFullStat(const FullSource &source)
         break;
       case SQ:
         ++renameSQFullEvents;
+        break;
+      case FullSource::Register:
+        ++renameFullRegistersEvents;
         break;
       default:
         panic("Rename full stall stat should be incremented for a reason!");
