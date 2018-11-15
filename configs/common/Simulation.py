@@ -177,7 +177,7 @@ def findCptDir(options, cptdir, testsys):
         simpoint_start_insts.append(warmup_length)
         simpoint_start_insts.append(warmup_length + interval_length)
         testsys.cpu[0].simpoint_start_insts = simpoint_start_insts
-        if testsys.switch_cpus != None:
+        if hasattr(testsys, 'switch_cpus') and testsys.switch_cpus != None:
             testsys.switch_cpus[0].simpoint_start_insts = simpoint_start_insts
 
         print("Resuming from SimPoint", end=' ')

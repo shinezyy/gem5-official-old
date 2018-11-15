@@ -33,6 +33,7 @@ def avoid_repeated(func, outdir, *args, **kwargs):
             func(*args, **kwargs)
             sh.touch(out_ts_file)
         except Exception as e:
+            print('xx')
             print(e)
         sh.rm(running_lock_file)
     else:
@@ -48,13 +49,21 @@ def gem5_home():
     return '/'.join(paths[:-2])  # delete '/util/run_sh_scrpits'
 
 
-def gem5_build():
-    return pjoin(gem5_home(), 'build/ARM')
+def gem5_build(arch):
+    return pjoin(gem5_home(), 'build/{}'.format(arch))
 
 
 def gem5_exec():
     return os.environ['gem5_run_dir']
 
 
-def gem5_cpt_dir():
-    return os.environ['cpt_dir']
+def gem5_cpt_dir(arch):
+    cpt_dirs = {
+            'ARM':
+            os.path.expanduser(
+                '~/research-data/spec-simpoint-cpts-arm-gcc-4.8'),
+            'RISCV':
+            os.path.expanduser(
+                '~/research-data/spec-simpoint-cpt-riscv-gcc-8.2'),
+            }
+    return cpt_dirs[arch]

@@ -11,15 +11,15 @@ from os.path import join as pjoin
 
 
 class Spec06:
-    def __init__(self):
+    def __init__(self, suffix):
         print 'Initializing Spec06 Object'
         self.edu_flag = self.init_env()
         self.name_map, self.cmd_map = get_input_dict()
 
         self.spec_dir = os.environ['cpu_2006_dir']+'/'
-        # self.suffix = '_base.gcc-alpha-4.3'
-        self.suffix = '_base.gcc-arm64-4.8.0'
+        self.suffix = suffix
         self.pid_idx = 0
+        # self.suffix = '_base.gcc-arm64-4.8.0'
 
 
     def init_env(self):

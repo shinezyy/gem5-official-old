@@ -61,7 +61,6 @@ from common import CacheConfig
 from common import CpuConfig
 from common import MemConfig
 from common.Caches import *
-from common.cpu2000 import *
 
 from get_spec_proc import Spec06
 
@@ -83,11 +82,20 @@ def get_one_spec_2006_process(spec06_obj, benchmark_name):
         sys.exit(1)
 
 
+arch_suffix = {
+        'ARM': '_base.gcc-arm64-4.8.0',
+        'RISCV': '_base.gcc-riscv64-gnu-8.2.0',
+        }
+
+
 def get_spec_2006_processes(options):
-    spec06 = Spec06()
     benchmarks = options.benchmark.split(';')
     stdouts = options.benchmark_stdout.split(';')
     stderrs = options.benchmark_stderr.split(';')
+    if not options.arch:
+        print("No Arch(ARM, RISCV) specified. Exiting!\n", file=sys.stderr)
+        sys.exit(1)
+    spec06 = Spec06(arch_suffix[options.arch])
     num_processes = len(benchmarks)
     multiprocesses = []
     assert len(stderrs) == len(benchmarks)
@@ -241,6 +249,7 @@ if options.elastic_trace_en:
 # frequency.
 for cpu in system.cpu:
     cpu.clk_domain = system.cpu_clk_domain
+
 
 if is_kvm_cpu(CPUClass) or is_kvm_cpu(FutureClass):
     if buildEnv['TARGET_ISA'] == 'x86':
