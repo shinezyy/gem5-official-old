@@ -65,13 +65,6 @@ from common.Caches import *
 
 from get_spec_proc import Spec06
 
-# Check if KVM support has been enabled, we might need to do VM
-# configuration if that's the case.
-have_kvm_support = 'BaseKvmCPU' in globals()
-def is_kvm_cpu(cpu_class):
-    return have_kvm_support and cpu_class != None and \
-        issubclass(cpu_class, BaseKvmCPU)
-
 
 def get_one_spec_2006_process(spec06_obj, benchmark_name):
     process = spec06_obj.gen_proc(benchmark_name)
@@ -255,7 +248,7 @@ for cpu in system.cpu:
     cpu.clk_domain = system.cpu_clk_domain
 
 
-if is_kvm_cpu(CPUClass) or is_kvm_cpu(FutureClass):
+if CpuConfig.is_kvm_cpu(CPUClass) or CpuConfig.is_kvm_cpu(FutureClass):
     if buildEnv['TARGET_ISA'] == 'x86':
         system.kvm_vm = KvmVM()
         for process in multiprocesses:
@@ -264,17 +257,9 @@ if is_kvm_cpu(CPUClass) or is_kvm_cpu(FutureClass):
     else:
         fatal("KvmCPU can only be used in SE mode with x86")
 
-# Sanity check
-if options.fastmem:
-    if CPUClass != AtomicSimpleCPU:
-        fatal("Fastmem can only be used with atomic CPU!")
-    if (options.caches or options.l2cache):
-        fatal("You cannot use fastmem in combination with caches!")
-
 if options.simpoint_profile:
-    if not options.fastmem:
-        # Atomic CPU checked with fastmem option already
-        fatal("SimPoint generation should be done with atomic cpu and fastmem")
+    if not CpuConfig.is_atomic_cpu(CPUClass):
+        fatal("SimPoint/BPProbe should be done with an atomic cpu")
     if np > 1:
         fatal("SimPoint generation not supported with more than one CPUs")
 
@@ -285,9 +270,6 @@ for i in range(np):
         system.cpu[i].workload = multiprocesses[0]
     else:
         system.cpu[i].workload = multiprocesses[i]
-
-    if options.fastmem:
-        system.cpu[i].fastmem = True
 
     if options.simpoint_profile:
         system.cpu[i].addSimPointProbe(options.simpoint_interval)

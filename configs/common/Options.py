@@ -63,9 +63,6 @@ def _listPlatformTypes(option, opt, value, parser):
 # being used, and consequently no CPUs, but rather various types of
 # testers and traffic generators.
 def addNoISAOptions(parser):
-    parser.add_option("--arch",
-            choices=['ARM', 'RISCV'],
-            help="ARM or RISCV must be specified")
     parser.add_option("-n", "--num-cpus", type="int", default=1)
     parser.add_option("--sys-voltage", action="store", type="string",
                       default='1.0V',
