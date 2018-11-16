@@ -50,6 +50,7 @@
 LTAGE::LTAGE(const LTAGEParams *params)
   : BPredUnit(params),
     logSizeBiMP(params->logSizeBiMP),
+    logRatioBiModalHystEntries(params->logRatioBiModalHystEntries),
     logSizeTagTables(params->logSizeTagTables),
     logSizeLoopPred(params->logSizeLoopPred),
     nHistoryTables(params->nHistoryTables),
@@ -122,7 +123,11 @@ LTAGE::LTAGE(const LTAGEParams *params)
         }
     }
 
-    btable = new BimodalEntry[ULL(1) << logSizeBiMP];
+    const uint64_t bimodalTableSize = ULL(1) << logSizeBiMP;
+    btablePrediction.resize(bimodalTableSize, false);
+    btableHysteresis.resize(bimodalTableSize >> logRatioBiModalHystEntries,
+                            true);
+
     ltable = new LoopEntry[ULL(1) << logSizeLoopPred];
     gtable = new TageEntry*[nHistoryTables + 1];
     for (int i = 1; i <= nHistoryTables; i++) {
@@ -138,13 +143,14 @@ LTAGE::LTAGE(const LTAGEParams *params)
 int
 LTAGE::bindex(Addr pc_in) const
 {
-    return ((pc_in) & ((ULL(1) << (logSizeBiMP)) - 1));
+    return ((pc_in >> instShiftAmt) & ((ULL(1) << (logSizeBiMP)) - 1));
 }
 
 int
 LTAGE::lindex(Addr pc_in) const
 {
-    return (((pc_in) & ((ULL(1) << (logSizeLoopPred - 2)) - 1)) << 2);
+    return (((pc_in >> instShiftAmt) &
+             ((ULL(1) << (logSizeLoopPred - 2)) - 1)) << 2);
 }
 
 int
@@ -171,7 +177,8 @@ LTAGE::gindex(ThreadID tid, Addr pc, int bank) const
     int index;
     int hlen = (histLengths[bank] > 16) ? 16 : histLengths[bank];
     index =
-        (pc) ^ ((pc) >> ((int) abs(tagTableSizes[bank] - bank) + 1)) ^
+        (pc >> instShiftAmt) ^
+        ((pc >> instShiftAmt) >> ((int) abs(tagTableSizes[bank] - bank) + 1)) ^
         threadHistory[tid].computeIndices[bank].comp ^
         F(threadHistory[tid].pathHist, hlen, bank);
 
@@ -183,8 +190,9 @@ LTAGE::gindex(ThreadID tid, Addr pc, int bank) const
 uint16_t
 LTAGE::gtag(ThreadID tid, Addr pc, int bank) const
 {
-    int tag = (pc) ^ threadHistory[tid].computeTags[0][bank].comp
-                   ^ (threadHistory[tid].computeTags[1][bank].comp << 1);
+    int tag = (pc >> instShiftAmt) ^
+              threadHistory[tid].computeTags[0][bank].comp ^
+              (threadHistory[tid].computeTags[1][bank].comp << 1);
 
     return (tag & ((ULL(1) << tagWidths[bank]) - 1));
 }
@@ -208,27 +216,28 @@ LTAGE::ctrUpdate(int8_t & ctr, bool taken, int nbits)
 bool
 LTAGE::getBimodePred(Addr pc, BranchInfo* bi) const
 {
-    return (btable[bi->bimodalIndex].pred > 0);
+    return btablePrediction[bi->bimodalIndex];
 }
 
 
-// Update the bimodal predictor: a hysteresis bit is shared among 4 prediction
-// bits
+// Update the bimodal predictor: a hysteresis bit is shared among N prediction
+// bits (N = 2 ^ logRatioBiModalHystEntries)
 void
 LTAGE::baseUpdate(Addr pc, bool taken, BranchInfo* bi)
 {
-    int inter = (btable[bi->bimodalIndex].pred << 1)
-              + btable[bi->bimodalIndex ].hyst;
+    int inter = (btablePrediction[bi->bimodalIndex] << 1)
+        + btableHysteresis[bi->bimodalIndex >> logRatioBiModalHystEntries];
     if (taken) {
         if (inter < 3)
             inter++;
     } else if (inter > 0) {
         inter--;
     }
-    btable[bi->bimodalIndex].pred = inter >> 1;
-    btable[bi->bimodalIndex].hyst = (inter & 1);
-    DPRINTF(LTage, "Updating branch %lx, pred:%d, hyst:%d\n",
-            pc, btable[bi->bimodalIndex].pred,btable[bi->bimodalIndex].hyst);
+    const bool pred = inter >> 1;
+    const bool hyst = inter & 1;
+    btablePrediction[bi->bimodalIndex] = pred;
+    btableHysteresis[bi->bimodalIndex >> logRatioBiModalHystEntries] = hyst;
+    DPRINTF(LTage, "Updating branch %lx, pred:%d, hyst:%d\n", pc, pred, hyst);
 }
 
 
@@ -239,7 +248,7 @@ LTAGE::getLoop(Addr pc, BranchInfo* bi) const
     bi->loopHit = -1;
     bi->loopPredValid = false;
     bi->loopIndex = lindex(pc);
-    bi->loopTag = ((pc) >> (logSizeLoopPred - 2));
+    bi->loopTag = ((pc) >> (instShiftAmt + logSizeLoopPred - 2));
 
     for (int i = 0; i < 4; i++) {
         if (ltable[bi->loopIndex + i].tag == bi->loopTag) {
@@ -630,7 +639,7 @@ LTAGE::updateHistories(ThreadID tid, Addr branch_pc, bool taken, void* b)
     BranchInfo* bi = (BranchInfo*)(b);
     ThreadHistory& tHist = threadHistory[tid];
     //  UPDATE HISTORIES
-    bool pathbit = ((branch_pc) & 1);
+    bool pathbit = ((branch_pc >> instShiftAmt) & 1);
     //on a squash, return pointers to this and recompute indices.
     //update user history
     updateGHist(tHist.gHist, taken, tHist.globalHistory, tHist.ptGhist);
