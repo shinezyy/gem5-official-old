@@ -760,6 +760,7 @@ DefaultIEW<Impl>::checkStall(ThreadID tid)
         ret_val = true;
     } else if (instQueue.isFull(tid)) {
         DPRINTF(IEW,"[tid:%i]: Stall: IQ  is full.\n",tid);
+        ++iewIQFullEvents;
         ret_val = true;
     }
 

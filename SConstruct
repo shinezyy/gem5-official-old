@@ -145,6 +145,8 @@ AddLocalOption('--default', dest='default', type='string', action='store',
                help='Override which build_opts file to use for defaults')
 AddLocalOption('--ignore-style', dest='ignore_style', action='store_true',
                help='Disable style checking hooks')
+AddLocalOption('--gold-linker', dest='gold_linker', action='store_true',
+               help='Use the gold linker')
 AddLocalOption('--no-lto', dest='no_lto', action='store_true',
                help='Disable Link-Time Optimization for fast')
 AddLocalOption('--force-lto', dest='force_lto', action='store_true',
@@ -357,6 +359,8 @@ if main['GCC'] or main['CLANG']:
 
     main['FILTER_PSHLINKFLAGS'] = lambda x: str(x).replace(' -shared', '')
     main['PSHLINKFLAGS'] = main.subst('${FILTER_PSHLINKFLAGS(SHLINKFLAGS)}')
+    if GetOption('gold_linker'):
+        main.Append(LINKFLAGS='-fuse-ld=gold')
     main['PLINKFLAGS'] = main.subst('${LINKFLAGS}')
     shared_partial_flags = ['-r', '-nostdlib']
     main.Append(PSHLINKFLAGS=shared_partial_flags)
@@ -421,27 +425,6 @@ if main['GCC']:
             main.Append(PSHLINKFLAGS='-flinker-output=rel')
             main.Append(PLINKFLAGS='-flinker-output=rel')
 
-    # gcc from version 4.8 and above generates "rep; ret" instructions
-    # to avoid performance penalties on certain AMD chips. Older
-    # assemblers detect this as an error, "Error: expecting string
-    # instruction after `rep'"
-    as_version_raw = readCommand([main['AS'], '-v', '/dev/null',
-                                  '-o', '/dev/null'],
-                                 exception=False).split()
-
-    # version strings may contain extra distro-specific
-    # qualifiers, so play it safe and keep only what comes before
-    # the first hyphen
-    as_version = as_version_raw[-1].split('-')[0] if as_version_raw else None
-
-    if not as_version or compareVersions(as_version, "2.23") < 0:
-        print(termcap.Yellow + termcap.Bold +
-            'Warning: This combination of gcc and binutils have' +
-            ' known incompatibilities.\n' +
-            '         If you encounter build problems, please update ' +
-            'binutils to 2.23.' +
-            termcap.Normal)
-
     # Make sure we warn if the user has requested to compile with the
     # Undefined Benahvior Sanitizer and this version of gcc does not
     # support it.
@@ -484,11 +467,11 @@ if main['GCC']:
                 compareVersions(main['GCC_VERSION'], '4.9') >= 0:
             main.Append(CCFLAGS=['-fsanitize=address,undefined',
                                  '-fno-omit-frame-pointer'],
-                       LINKFLAGS='-fsanitize=address,undefined')
+                        LINKFLAGS='-fsanitize=address,undefined')
         else:
             main.Append(CCFLAGS=['-fsanitize=address',
                                  '-fno-omit-frame-pointer'],
-                       LINKFLAGS='-fsanitize=address')
+                        LINKFLAGS='-fsanitize=address')
     # Only gcc >= 4.9 supports UBSan, so check both the version
     # and the command-line option before adding the compiler and
     # linker flags.
@@ -541,16 +524,16 @@ elif main['CLANG']:
     # versions here.
     if GetOption('with_ubsan'):
         if GetOption('with_asan'):
-            env.Append(CCFLAGS=['-fsanitize=address,undefined',
-                                '-fno-omit-frame-pointer'],
+            main.Append(CCFLAGS=['-fsanitize=address,undefined',
+                                 '-fno-omit-frame-pointer'],
                        LINKFLAGS='-fsanitize=address,undefined')
         else:
-            env.Append(CCFLAGS='-fsanitize=undefined',
-                       LINKFLAGS='-fsanitize=undefined')
+            main.Append(CCFLAGS='-fsanitize=undefined',
+                        LINKFLAGS='-fsanitize=undefined')
 
     elif GetOption('with_asan'):
-        env.Append(CCFLAGS=['-fsanitize=address',
-                            '-fno-omit-frame-pointer'],
+        main.Append(CCFLAGS=['-fsanitize=address',
+                             '-fno-omit-frame-pointer'],
                    LINKFLAGS='-fsanitize=address')
 
 else:
@@ -783,6 +766,10 @@ main['HAVE_PROTOBUF'] = main['PROTOC'] and \
     conf.CheckLibWithHeader('protobuf', 'google/protobuf/message.h',
                             'C++', 'GOOGLE_PROTOBUF_VERIFY_VERSION;')
 
+# Valgrind gets much less confused if you tell it when you're using
+# alternative stacks.
+main['HAVE_VALGRIND'] = conf.CheckCHeader('valgrind/valgrind.h')
+
 # If we have the compiler but not the library, print another warning.
 if main['PROTOC'] and not main['HAVE_PROTOBUF']:
     print(termcap.Yellow + termcap.Bold +
@@ -1012,8 +999,8 @@ sticky_vars.AddVariables(
 # These variables get exported to #defines in config/*.hh (see src/SConscript).
 export_vars += ['USE_FENV', 'SS_COMPATIBLE_FP', 'TARGET_ISA', 'TARGET_GPU_ISA',
                 'CP_ANNOTATE', 'USE_POSIX_CLOCK', 'USE_KVM', 'USE_TUNTAP',
-                'PROTOCOL', 'HAVE_PROTOBUF', 'HAVE_PERF_ATTR_EXCLUDE_HOST',
-                'USE_PNG']
+                'PROTOCOL', 'HAVE_PROTOBUF', 'HAVE_VALGRIND',
+                'HAVE_PERF_ATTR_EXCLUDE_HOST', 'USE_PNG']
 
 ###################################################
 #

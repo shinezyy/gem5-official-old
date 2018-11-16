@@ -63,6 +63,7 @@
 #include "base/logging.hh"
 #include "base/printable.hh"
 #include "base/types.hh"
+#include "config/the_isa.hh"
 #include "mem/request.hh"
 #include "sim/core.hh"
 
@@ -93,6 +94,7 @@ class MemCmd
         WriteClean,            // writes dirty data below without evicting
         CleanEvict,
         SoftPFReq,
+        SoftPFExReq,
         HardPFReq,
         SoftPFResp,
         HardPFResp,
@@ -347,6 +349,9 @@ class Packet : public Printable
      */
     std::vector<bool> bytesValid;
 
+    // Quality of Service priority value
+    uint8_t _qosValue;
+
   public:
 
     /**
@@ -549,6 +554,12 @@ class Packet : public Printable
     bool isPrint() const             { return cmd.isPrint(); }
     bool isFlush() const             { return cmd.isFlush(); }
 
+    bool isWholeLineWrite(unsigned blk_size)
+    {
+        return (cmd == MemCmd::WriteReq || cmd == MemCmd::WriteLineReq) &&
+            getOffset(blk_size) == 0 && getSize() == blk_size;
+    }
+
     //@{
     /// Snoop flags
     /**
@@ -670,6 +681,25 @@ class Packet : public Printable
     bool isBlockCached() const     { return flags.isSet(BLOCK_CACHED); }
     void clearBlockCached()        { flags.clear(BLOCK_CACHED); }
 
+    /**
+     * QoS Value getter
+     * Returns 0 if QoS value was never set (constructor default).
+     *
+     * @return QoS priority value of the packet
+     */
+    inline uint8_t qosValue() const { return _qosValue; }
+
+    /**
+     * QoS Value setter
+     * Interface for setting QoS priority value of the packet.
+     *
+     * @param qos_value QoS priority value
+     */
+    inline void qosValue(const uint8_t qos_value)
+    { _qosValue = qos_value; }
+
+    inline MasterID masterId() const { return req->masterId(); }
+
     // Network error conditions... encapsulate them as methods since
     // their encoding keeps changing (from result field to command
     // field, etc.)
@@ -746,8 +776,9 @@ class Packet : public Printable
      * not be valid. The command must be supplied.
      */
     Packet(const RequestPtr &_req, MemCmd _cmd)
-        :  cmd(_cmd), id((PacketId)_req.get()), req(_req), data(nullptr),
-           addr(0), _isSecure(false), size(0), headerDelay(0), snoopDelay(0),
+        :  cmd(_cmd), id((PacketId)_req.get()), req(_req),
+           data(nullptr), addr(0), _isSecure(false), size(0),
+           _qosValue(0), headerDelay(0), snoopDelay(0),
            payloadDelay(0), senderState(NULL)
     {
         if (req->hasPaddr()) {
@@ -768,7 +799,8 @@ class Packet : public Printable
      */
     Packet(const RequestPtr &_req, MemCmd _cmd, int _blkSize, PacketId _id = 0)
         :  cmd(_cmd), id(_id ? _id : (PacketId)_req.get()), req(_req),
-           data(nullptr), addr(0), _isSecure(false), headerDelay(0),
+           data(nullptr), addr(0), _isSecure(false),
+           _qosValue(0), headerDelay(0),
            snoopDelay(0), payloadDelay(0), senderState(NULL)
     {
         if (req->hasPaddr()) {
@@ -792,6 +824,7 @@ class Packet : public Printable
            data(nullptr),
            addr(pkt->addr), _isSecure(pkt->_isSecure), size(pkt->size),
            bytesValid(pkt->bytesValid),
+           _qosValue(pkt->qosValue()),
            headerDelay(pkt->headerDelay),
            snoopDelay(0),
            payloadDelay(pkt->payloadDelay),
@@ -827,6 +860,8 @@ class Packet : public Printable
     {
         if (req->isLLSC())
             return MemCmd::LoadLockedReq;
+        else if (req->isPrefetchEx())
+            return MemCmd::SoftPFExReq;
         else if (req->isPrefetch())
             return MemCmd::SoftPFReq;
         else
@@ -1030,12 +1065,15 @@ class Packet : public Printable
     template <typename T>
     T get(ByteOrder endian) const;
 
+#if THE_ISA != NULL_ISA
     /**
      * Get the data in the packet byte swapped from guest to host
      * endian.
      */
     template <typename T>
-    T get() const;
+    T get() const
+        M5_DEPRECATED_MSG("The memory system should be ISA independent.");
+#endif
 
     /** Set the value in the data pointer to v as big endian. */
     template <typename T>
@@ -1052,10 +1090,12 @@ class Packet : public Printable
     template <typename T>
     void set(T v, ByteOrder endian);
 
+#if THE_ISA != NULL_ISA
     /** Set the value in the data pointer to v as guest endian. */
     template <typename T>
-    void set(T v);
-
+    void set(T v)
+        M5_DEPRECATED_MSG("The memory system should be ISA independent.");
+#endif
 
     /**
      * Get the data in the packet byte swapped from the specified
@@ -1148,7 +1188,6 @@ class Packet : public Printable
 
     /** @} */
 
-  private: // Private data accessor methods
     /** Get the data in the packet without byte swapping. */
     template <typename T>
     T getRaw() const;
@@ -1168,14 +1207,14 @@ class Packet : public Printable
      * accordingly.
      */
     bool
-    checkFunctional(PacketPtr other)
+    trySatisfyFunctional(PacketPtr other)
     {
         // all packets that are carrying a payload should have a valid
         // data pointer
-        return checkFunctional(other, other->getAddr(), other->isSecure(),
-                               other->getSize(),
-                               other->hasData() ?
-                               other->getPtr<uint8_t>() : NULL);
+        return trySatisfyFunctional(other, other->getAddr(), other->isSecure(),
+                                    other->getSize(),
+                                    other->hasData() ?
+                                    other->getPtr<uint8_t>() : NULL);
     }
 
     /**
@@ -1206,8 +1245,8 @@ class Packet : public Printable
      * memory value.
      */
     bool
-    checkFunctional(Printable *obj, Addr base, bool is_secure, int size,
-                    uint8_t *_data);
+    trySatisfyFunctional(Printable *obj, Addr base, bool is_secure, int size,
+                         uint8_t *_data);
 
     /**
      * Push label for PrintReq (safe to call unconditionally).

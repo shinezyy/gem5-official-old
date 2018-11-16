@@ -1228,6 +1228,11 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                 break;
             }
             break;
+          case 11:
+          case 15:
+            // SYS Instruction with CRn = { 11, 15 }
+            // (Trappable by HCR_EL2.TIDCP)
+            return MISCREG_IMPDEF_UNIMPL;
         }
         break;
       case 2:
@@ -1539,7 +1544,9 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                         return MISCREG_ID_AA64MMFR0_EL1;
                       case 1:
                         return MISCREG_ID_AA64MMFR1_EL1;
-                      case 2 ... 7:
+                      case 2:
+                        return MISCREG_ID_AA64MMFR2_EL1;
+                      case 3 ... 7:
                         return MISCREG_RAZ;
                     }
                     break;
@@ -1857,6 +1864,34 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                         return MISCREG_ESR_EL1;
                     }
                     break;
+                  case 3:
+                    switch (op2) {
+                      case 0:
+                        return MISCREG_ERRIDR_EL1;
+                      case 1:
+                        return MISCREG_ERRSELR_EL1;
+                    }
+                    break;
+                  case 4:
+                    switch (op2) {
+                      case 0:
+                        return MISCREG_ERXFR_EL1;
+                      case 1:
+                        return MISCREG_ERXCTLR_EL1;
+                      case 2:
+                        return MISCREG_ERXSTATUS_EL1;
+                      case 3:
+                        return MISCREG_ERXADDR_EL1;
+                    }
+                    break;
+                  case 5:
+                    switch (op2) {
+                      case 0:
+                        return MISCREG_ERXMISC0_EL1;
+                      case 1:
+                        return MISCREG_ERXMISC1_EL1;
+                    }
+                    break;
                 }
                 break;
               case 4:
@@ -1879,6 +1914,8 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                     switch (op2) {
                       case 0:
                         return MISCREG_ESR_EL2;
+                      case 3:
+                        return MISCREG_VSESR_EL2;
                     }
                     break;
                   case 3:
@@ -2104,6 +2141,8 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                     switch (op2) {
                       case 0:
                         return MISCREG_ISR_EL1;
+                      case 1:
+                        return MISCREG_DISR_EL1;
                     }
                     break;
                 }
@@ -2116,6 +2155,12 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                         return MISCREG_VBAR_EL2;
                       case 1:
                         return MISCREG_RVBAR_EL2;
+                    }
+                    break;
+                  case 1:
+                    switch (op2) {
+                      case 1:
+                        return MISCREG_VDISR_EL2;
                     }
                     break;
                 }
@@ -2291,6 +2336,16 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                         return MISCREG_CNTHP_CTL_EL2;
                       case 2:
                         return MISCREG_CNTHP_CVAL_EL2;
+                    }
+                    break;
+                  case 3:
+                    switch (op2) {
+                      case 0:
+                        return MISCREG_CNTHV_TVAL_EL2;
+                      case 1:
+                        return MISCREG_CNTHV_CTL_EL2;
+                      case 2:
+                        return MISCREG_CNTHV_CVAL_EL2;
                     }
                     break;
                 }
@@ -3110,7 +3165,10 @@ ISA::initializeMiscRegMetadata()
       .bankedChild()
       .secure().exceptUserMode();
     InitReg(MISCREG_MVBAR)
-      .mon().secure().exceptUserMode();
+      .mon().secure()
+      .hypRead(FullSystem && system->highestEL() == EL2)
+      .privRead(FullSystem && system->highestEL() == EL1)
+      .exceptUserMode();
     InitReg(MISCREG_RMR)
       .unimplemented()
       .mon().secure().exceptUserMode();
@@ -3455,6 +3513,8 @@ ISA::initializeMiscRegMetadata()
     InitReg(MISCREG_ID_AA64MMFR0_EL1)
       .allPrivileges().exceptUserMode().writes(0);
     InitReg(MISCREG_ID_AA64MMFR1_EL1)
+      .allPrivileges().exceptUserMode().writes(0);
+    InitReg(MISCREG_ID_AA64MMFR2_EL1)
       .allPrivileges().exceptUserMode().writes(0);
     InitReg(MISCREG_CCSIDR_EL1)
       .allPrivileges().exceptUserMode().writes(0);
@@ -3980,6 +4040,12 @@ ISA::initializeMiscRegMetadata()
       .allPrivileges().exceptUserMode().writes(0);
     InitReg(MISCREG_CONTEXTIDR_EL2)
       .mon().hyp();
+    InitReg(MISCREG_CNTHV_CTL_EL2)
+      .mon().hyp();
+    InitReg(MISCREG_CNTHV_CVAL_EL2)
+      .mon().hyp();
+    InitReg(MISCREG_CNTHV_TVAL_EL2)
+      .mon().hyp();
 
     // Dummy registers
     InitReg(MISCREG_NOP)
@@ -3996,6 +4062,41 @@ ISA::initializeMiscRegMetadata()
     InitReg(MISCREG_IMPDEF_UNIMPL)
       .unimplemented()
       .warnNotFail(impdefAsNop);
+
+    // RAS extension (unimplemented)
+    InitReg(MISCREG_ERRIDR_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_ERRSELR_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_ERXFR_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_ERXCTLR_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_ERXSTATUS_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_ERXADDR_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_ERXMISC0_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_ERXMISC1_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_DISR_EL1)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_VSESR_EL2)
+      .unimplemented()
+      .warnNotFail();
+    InitReg(MISCREG_VDISR_EL2)
+      .unimplemented()
+      .warnNotFail();
 
     // Register mappings for some unimplemented registers:
     // ESR_EL1 -> DFSR

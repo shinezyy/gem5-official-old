@@ -60,6 +60,7 @@ from common import Simulation
 from common import CacheConfig
 from common import CpuConfig
 from common import MemConfig
+from common import SSOptions
 from common.Caches import *
 
 from get_spec_proc import Spec06
@@ -167,6 +168,8 @@ def get_processes(options):
 parser = optparse.OptionParser()
 Options.addCommonOptions(parser)
 Options.addSEOptions(parser)
+SSOptions.addSSOptions(parser)
+SSOptions.addO3Options(parser)
 
 if '--ruby' in sys.argv:
     Ruby.define_options(parser)
@@ -210,6 +213,7 @@ else:
 
 
 (CPUClass, test_mem_mode, FutureClass) = Simulation.setCPUClass(options)
+print(CPUClass, FutureClass)
 CPUClass.numThreads = numThreads
 
 # Check -- do not allow SMT with multiple CPUs

@@ -33,7 +33,6 @@ def avoid_repeated(func, outdir, *args, **kwargs):
             func(*args, **kwargs)
             sh.touch(out_ts_file)
         except Exception as e:
-            print('xx')
             print(e)
         sh.rm(running_lock_file)
     else:
@@ -59,11 +58,7 @@ def gem5_exec():
 
 def gem5_cpt_dir(arch):
     cpt_dirs = {
-            'ARM':
-            os.path.expanduser(
-                '~/research-data/spec-simpoint-cpts-arm-gcc-4.8'),
-            'RISCV':
-            os.path.expanduser(
-                '~/research-data/spec-simpoint-cpt-riscv-gcc-8.2'),
+            'ARM': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-arm-gcc-4.8',
+            'RISCV': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-riscv-gcc-8.2',
             }
     return cpt_dirs[arch]

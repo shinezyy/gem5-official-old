@@ -215,6 +215,18 @@ SyscallReturn symlinkFunc(SyscallDesc *desc, int num, Process *p,
 SyscallReturn mkdirFunc(SyscallDesc *desc, int num,
                         Process *p, ThreadContext *tc);
 
+/// Target mknod() handler.
+SyscallReturn mknodFunc(SyscallDesc *desc, int num,
+                        Process *p, ThreadContext *tc);
+
+/// Target chdir() handler.
+SyscallReturn chdirFunc(SyscallDesc *desc, int num,
+                        Process *p, ThreadContext *tc);
+
+// Target rmdir() handler.
+SyscallReturn rmdirFunc(SyscallDesc *desc, int num,
+                        Process *p, ThreadContext *tc);
+
 /// Target rename() handler.
 SyscallReturn renameFunc(SyscallDesc *desc, int num,
                          Process *p, ThreadContext *tc);
@@ -291,7 +303,11 @@ SyscallReturn pipeImpl(SyscallDesc *desc, int num, Process *p,
 SyscallReturn getpidFunc(SyscallDesc *desc, int num,
                          Process *p, ThreadContext *tc);
 
-/// Target getuid() handler.
+// Target getdents() handler.
+SyscallReturn getdentsFunc(SyscallDesc *desc, int num,
+                           Process *p, ThreadContext *tc);
+
+// Target getuid() handler.
 SyscallReturn getuidFunc(SyscallDesc *desc, int num,
                          Process *p, ThreadContext *tc);
 
@@ -679,7 +695,7 @@ openImpl(SyscallDesc *desc, int callnum, Process *p, ThreadContext *tc,
         auto ffdp = std::dynamic_pointer_cast<FileFDEntry>(fdep);
         if (!ffdp)
             return -EBADF;
-        path.insert(0, ffdp->getFileName());
+        path.insert(0, ffdp->getFileName() + "/");
     }
 
     /**

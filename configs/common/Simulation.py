@@ -47,6 +47,7 @@ from os.path import join as joinpath
 
 from common import CpuConfig
 from common import MemConfig
+from common import SSConfig
 
 import m5
 from m5.defines import buildEnv
@@ -479,6 +480,9 @@ def run(options, root, testsys, cpu_class):
             if options.checker:
                 switch_cpus[i].addCheckerCpu()
 
+            # O3 Config
+            SSConfig.modifyO3CPUConfig(options, switch_cpus[i])
+
         # If elastic tracing is enabled attach the elastic trace probe
         # to the switch CPUs
         if options.elastic_trace_en:
@@ -597,6 +601,7 @@ def run(options, root, testsys, cpu_class):
     checkpoint_dir = None
     if options.checkpoint_restore:
         cpt_starttick, checkpoint_dir = findCptDir(options, cptdir, testsys)
+    root.apply_config(options.param)
     m5.instantiate(checkpoint_dir)
 
     # Initialization is complete.  If we're not in control of simulation
@@ -716,5 +721,5 @@ def run(options, root, testsys, cpu_class):
     if options.checkpoint_at_end:
         m5.checkpoint(joinpath(cptdir, "cpt.%d"))
 
-    if not m5.options.interactive:
-        sys.exit(exit_event.getCode())
+    if exit_event.getCode() != 0:
+        print("Simulated exit code not 0! Exit code is", exit_event.getCode())

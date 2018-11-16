@@ -30,10 +30,21 @@
 #ifndef __BASE_FIBER_HH__
 #define __BASE_FIBER_HH__
 
+// ucontext functions (like getcontext, setcontext etc) have been marked
+// as deprecated and are hence hidden in latest macOS releases.
+// By defining _XOPEN_SOURCE we make them available at compilation time.
+#if defined(__APPLE__) && defined(__MACH__)
+#define _XOPEN_SOURCE 600
 #include <ucontext.h>
+#undef _XOPEN_SOURCE
+#else
+#include <ucontext.h>
+#endif
 
 #include <cstddef>
 #include <cstdint>
+
+#include "config/have_valgrind.hh"
 
 /**
  * This class represents a fiber, which is a light weight sort of thread which
@@ -97,6 +108,9 @@ class Fiber
     // The stack for this context, or a nullptr if allocated elsewhere.
     uint8_t *stack;
     size_t stackSize;
+#if HAVE_VALGRIND
+    unsigned valgrindStackId;
+#endif
 
     bool started;
     bool _finished;

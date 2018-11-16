@@ -63,7 +63,7 @@
 #include "debug/Cache.hh"
 #include "debug/CachePort.hh"
 #include "enums/Clusivity.hh"
-#include "mem/cache/blk.hh"
+#include "mem/cache/cache_blk.hh"
 #include "mem/cache/mshr_queue.hh"
 #include "mem/cache/tags/base.hh"
 #include "mem/cache/write_queue.hh"
@@ -73,7 +73,9 @@
 #include "mem/packet_queue.hh"
 #include "mem/qport.hh"
 #include "mem/request.hh"
+#include "params/WriteAllocator.hh"
 #include "sim/eventq.hh"
+#include "sim/probe/probe.hh"
 #include "sim/serialize.hh"
 #include "sim/sim_exit.hh"
 #include "sim/system.hh"
@@ -323,10 +325,27 @@ class BaseCache : public MemObject
     /** Prefetcher */
     BasePrefetcher *prefetcher;
 
+    /** To probe when a cache hit occurs */
+    ProbePointArg<PacketPtr> *ppHit;
+
+    /** To probe when a cache miss occurs */
+    ProbePointArg<PacketPtr> *ppMiss;
+
     /**
-     * Notify the prefetcher on every access, not just misses.
+     * The writeAllocator drive optimizations for streaming writes.
+     * It first determines whether a WriteReq MSHR should be delayed,
+     * thus ensuring that we wait longer in cases when we are write
+     * coalescing and allowing all the bytes of the line to be written
+     * before the MSHR packet is sent downstream. This works in unison
+     * with the tracking in the MSHR to check if the entire line is
+     * written. The write mode also affects the behaviour on filling
+     * any whole-line writes. Normally the cache allocates the line
+     * when receiving the InvalidateResp, but after seeing enough
+     * consecutive lines we switch to using the tempBlock, and thus
+     * end up not allocating the line, and instead turning the
+     * whole-line write into a writeback straight away.
      */
-    const bool prefetchOnAccess;
+    WriteAllocator * const writeAllocator;
 
     /**
      * Temporary cache block for occasional transitory use.  We use
@@ -398,6 +417,17 @@ class BaseCache : public MemObject
      * @return The block's address.
      */
     Addr regenerateBlkAddr(CacheBlk* blk);
+
+    /**
+     * Calculate access latency in ticks given a tag lookup latency, and
+     * whether access was a hit or miss.
+     *
+     * @param blk The cache block that was accessed.
+     * @param lookup_lat Latency of the respective tag lookup.
+     * @return The number of ticks that pass due to a block access.
+     */
+    Cycles calculateAccessLatency(const CacheBlk* blk,
+                                  const Cycles lookup_lat) const;
 
     /**
      * Does all the processing necessary to perform the provided request.
@@ -506,7 +536,7 @@ class BaseCache : public MemObject
      * @param writebacks A list with packets for any performed writebacks
      * @return Cycles for handling the request
      */
-    virtual Cycles handleAtomicReqMiss(PacketPtr pkt, CacheBlk *blk,
+    virtual Cycles handleAtomicReqMiss(PacketPtr pkt, CacheBlk *&blk,
                                        PacketList &writebacks) = 0;
 
     /**
@@ -566,10 +596,13 @@ class BaseCache : public MemObject
      * @param blk The referenced block, can be nullptr.
      * @param needs_writable Indicates that the block must be writable
      * even if the request in cpu_pkt doesn't indicate that.
+     * @param is_whole_line_write True if there are writes for the
+     * whole line
      * @return A packet send to the memory below
      */
     virtual PacketPtr createMissPacket(PacketPtr cpu_pkt, CacheBlk *blk,
-                                       bool needs_writable) const = 0;
+                                       bool needs_writable,
+                                       bool is_whole_line_write) const = 0;
 
     /**
      * Determine if clean lines should be written back or not. In
@@ -685,7 +718,7 @@ class BaseCache : public MemObject
      * @param blk Block to invalidate
      * @param writebacks Return a list of packets with writebacks
      */
-    virtual void evictBlock(CacheBlk *blk, PacketList &writebacks) = 0;
+    void evictBlock(CacheBlk *blk, PacketList &writebacks);
 
     /**
      * Invalidate a cache block.
@@ -782,6 +815,11 @@ class BaseCache : public MemObject
      * latency.
      */
     const Cycles responseLatency;
+
+    /**
+     * Whether tags and data are accessed sequentially.
+     */
+    const bool sequentialAccess;
 
     /** The number of targets for each MSHR. */
     const int numTarget;
@@ -969,6 +1007,9 @@ class BaseCache : public MemObject
      */
     void regStats() override;
 
+    /** Registers probes. */
+    void regProbePoints() override;
+
   public:
     BaseCache(const BaseCacheParams *p, unsigned blk_size);
     ~BaseCache();
@@ -1116,6 +1157,14 @@ class BaseCache : public MemObject
     }
 
     /**
+     * Checks if the cache is coalescing writes
+     *
+     * @return True if the cache is coalescing writes
+     */
+    bool coalesce() const;
+
+
+    /**
      * Cache block visitor that writes back dirty cache blocks using
      * functional writes.
      */
@@ -1155,7 +1204,138 @@ class BaseCache : public MemObject
      */
     void serialize(CheckpointOut &cp) const override;
     void unserialize(CheckpointIn &cp) override;
+};
 
+/**
+ * The write allocator inspects write packets and detects streaming
+ * patterns. The write allocator supports a single stream where writes
+ * are expected to access consecutive locations and keeps track of
+ * size of the area covered by the concecutive writes in byteCount.
+ *
+ * 1) When byteCount has surpassed the coallesceLimit the mode
+ * switches from ALLOCATE to COALESCE where writes should be delayed
+ * until the whole block is written at which point a single packet
+ * (whole line write) can service them.
+ *
+ * 2) When byteCount has also exceeded the noAllocateLimit (whole
+ * line) we switch to NO_ALLOCATE when writes should not allocate in
+ * the cache but rather send a whole line write to the memory below.
+ */
+class WriteAllocator : public SimObject {
+  public:
+    WriteAllocator(const WriteAllocatorParams *p) :
+        SimObject(p),
+        coalesceLimit(p->coalesce_limit * p->block_size),
+        noAllocateLimit(p->no_allocate_limit * p->block_size),
+        delayThreshold(p->delay_threshold)
+    {
+        reset();
+    }
+
+    /**
+     * Should writes be coalesced? This is true if the mode is set to
+     * NO_ALLOCATE.
+     *
+     * @return return true if the cache should coalesce writes.
+     */
+    bool coalesce() const {
+        return mode != WriteMode::ALLOCATE;
+    }
+
+    /**
+     * Should writes allocate?
+     *
+     * @return return true if the cache should not allocate for writes.
+     */
+    bool allocate() const {
+        return mode != WriteMode::NO_ALLOCATE;
+    }
+
+    /**
+     * Reset the write allocator state, meaning that it allocates for
+     * writes and has not recorded any information about qualifying
+     * writes that might trigger a switch to coalescing and later no
+     * allocation.
+     */
+    void reset() {
+        mode = WriteMode::ALLOCATE;
+        byteCount = 0;
+        nextAddr = 0;
+    }
+
+    /**
+     * Access whether we need to delay the current write.
+     *
+     * @param blk_addr The block address the packet writes to
+     * @return true if the current packet should be delayed
+     */
+    bool delay(Addr blk_addr) {
+        if (delayCtr[blk_addr] > 0) {
+            --delayCtr[blk_addr];
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Clear delay counter for the input block
+     *
+     * @param blk_addr The accessed cache block
+     */
+    void resetDelay(Addr blk_addr) {
+        delayCtr.erase(blk_addr);
+    }
+
+    /**
+     * Update the write mode based on the current write
+     * packet. This method compares the packet's address with any
+     * current stream, and updates the tracking and the mode
+     * accordingly.
+     *
+     * @param write_addr Start address of the write request
+     * @param write_size Size of the write request
+     * @param blk_addr The block address that this packet writes to
+     */
+    void updateMode(Addr write_addr, unsigned write_size, Addr blk_addr);
+
+  private:
+    /**
+     * The current mode for write coalescing and allocation, either
+     * normal operation (ALLOCATE), write coalescing (COALESCE), or
+     * write coalescing without allocation (NO_ALLOCATE).
+     */
+    enum class WriteMode : char {
+        ALLOCATE,
+        COALESCE,
+        NO_ALLOCATE,
+    };
+    WriteMode mode;
+
+    /** Address to match writes against to detect streams. */
+    Addr nextAddr;
+
+    /**
+     * Bytes written contiguously. Saturating once we no longer
+     * allocate.
+     */
+    uint32_t byteCount;
+
+    /**
+     * Limits for when to switch between the different write modes.
+     */
+    const uint32_t coalesceLimit;
+    const uint32_t noAllocateLimit;
+    /**
+     * The number of times the allocator will delay an WriteReq MSHR.
+     */
+    const uint32_t delayThreshold;
+
+    /**
+     * Keep track of the number of times the allocator has delayed an
+     * WriteReq MSHR.
+     */
+    std::unordered_map<Addr, Counter> delayCtr;
 };
 
 #endif //__MEM_CACHE_BASE_HH__
