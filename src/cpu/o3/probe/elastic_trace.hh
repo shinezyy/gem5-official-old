@@ -213,13 +213,16 @@ class ElasticTrace : public ProbeListenerObject
          * Set of instruction sequence numbers that this instruction depends on
          * due to Read After Write data dependency based on physical register.
          */
+        bool hasDestReg;
+
         std::set<InstSeqNum> physRegDepSet;
         /** @} */
 
         /** Constructor */
         InstExecInfo()
           : executeTick(MaxTick),
-            toCommitTick(MaxTick)
+            toCommitTick(MaxTick),
+            hasDestReg(false)
         { }
     };
 
@@ -296,6 +299,8 @@ class ElasticTrace : public ProbeListenerObject
         uint32_t asid;
         /* Request size in case of a load/store instruction */
         unsigned size;
+
+        bool storeWithDestReg;
         /** Default Constructor */
         TraceInfo()
           : type(Record::INVALID)

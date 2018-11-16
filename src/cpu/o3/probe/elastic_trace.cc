@@ -247,6 +247,18 @@ ElasticTrace::updateRegDep(const DynInstPtr &dyn_inst)
             DPRINTFR(ElasticTrace, "[sn:%lli] Check map for src reg"
                      " %i (%s)\n", seq_num,
                      phys_src_reg->flatIndex(), phys_src_reg->className());
+            // if (seq_num == 2126423) {
+            //     DPRINTFR(ElasticTrace, "[sn: 2126423] is Atomic: %i, "
+            //             "is StoreConditional: %i, is serializing: %i, "
+            //             "is write barrier: %i\n",
+            //             dyn_inst->isAtomic(),
+            //             dyn_inst->isStoreConditional(),
+            //             dyn_inst->isSerializing(),
+            //             dyn_inst->isWriteBarrier());
+            //     std::cout
+            //     << dyn_inst->staticInst->disassemble(dyn_inst->instAddr())
+            //         << std::endl;
+            // }
             auto itr_writer = physRegDepMap.find(phys_src_reg->flatIndex());
             if (itr_writer != physRegDepMap.end()) {
                 InstSeqNum last_writer = itr_writer->second;
@@ -268,6 +280,7 @@ ElasticTrace::updateRegDep(const DynInstPtr &dyn_inst)
     // Loop through the destination registers of this instruction and update
     // the physical register dependency map for last writers to registers.
     max_regs = dyn_inst->numDestRegs();
+    exec_info_ptr->hasDestReg = max_regs > 0;
     for (int dest_idx = 0; dest_idx < max_regs; dest_idx++) {
         // For data dependency tracking the register must be an int, float or
         // CC register and not a Misc register.
@@ -399,6 +412,9 @@ ElasticTrace::addDepTraceRecord(const DynInstPtr &head_inst,
     new_record->type = head_inst->isLoad() ? Record::LOAD :
                         (head_inst->isStore() ? Record::STORE :
                         Record::COMP);
+
+    new_record->storeWithDestReg = head_inst->isStore() &&
+        exec_info_ptr->hasDestReg;
 
     // Assign fields for creating a request in case of a load/store
     new_record->reqFlags = head_inst->memReqFlags;
@@ -734,10 +750,17 @@ ElasticTrace::compDelayPhysRegDep(TraceInfo* past_record,
     // that is toCommitTick. In case, of a store updating a destination
     // register, this is approximated to commitTick instead
     if (past_record->isStore()) {
-        completion_tick = past_record->commitTick;
+        if (past_record->storeWithDestReg) {
+            completion_tick = past_record->toCommitTick;
+        } else {
+            completion_tick = past_record->commitTick;
+        }
     } else {
         completion_tick = past_record->toCommitTick;
     }
+
+    // DPRINTF(ElasticTrace, "exec tick: %lli completion tick: %lli\n",
+    //         execution_tick, completion_tick);
     assert(execution_tick >= completion_tick);
     comp_delay = execution_tick - completion_tick;
     DPRINTF(ElasticTrace, "Computational delay is %lli - %lli = %lli\n",
