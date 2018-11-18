@@ -45,6 +45,7 @@
 
 #include <queue>
 #include <set>
+#include <vector>
 
 #include "base/statistics.hh"
 #include "cpu/o3/comm.hh"
@@ -174,6 +175,8 @@ class DefaultIEW
     /** Squashes instructions in IEW for a specific thread. */
     void squash(ThreadID tid);
 
+    void squashForwardFlow(const InstSeqNum &squashed_num, ThreadID tid);
+
     /** Wakes all dependents of a completed instruction. */
     void wakeDependents(DynInstPtr &inst);
 
@@ -263,6 +266,8 @@ class DefaultIEW
      */
     void executeInsts();
 
+    void forwardFlowWakeup();
+
     /** Writebacks instructions. In our model, the instruction's execute()
      * function atomically reads registers, executes, and writes registers.
      * Thus this writeback only wakes up dependent instructions, and informs
@@ -329,6 +334,8 @@ class DefaultIEW
 
     /** Wire to write infromation heading to commit. */
     typename TimeBuffer<IEWStruct>::wire toCommit;
+
+    std::vector<DynInstPtr> forward_flow_late_wakeup;
 
     /** Queue of all instructions coming from rename this cycle. */
     std::queue<DynInstPtr> insts[Impl::MaxThreads];

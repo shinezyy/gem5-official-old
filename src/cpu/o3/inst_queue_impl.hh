@@ -1078,6 +1078,94 @@ InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
 }
 
 template <class Impl>
+int
+InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
+        bool &remaining)
+{
+    int dependents = 0;
+    remaining = false;
+
+    // The instruction queue here takes care of both floating and int ops
+    if (completed_inst->isFloating()) {
+        fpInstQueueWakeupAccesses++;
+    } else if (completed_inst->isVector()) {
+        vecInstQueueWakeupAccesses++;
+    } else {
+        intInstQueueWakeupAccesses++;
+    }
+
+    DPRINTF(IQ, "Waking dependents of completed instruction.\n");
+
+    assert(!completed_inst->isSquashed());
+
+    // Tell the memory dependence unit to wake any dependents on this
+    // instruction if it is a memory instruction.  Also complete the memory
+    // instruction at this point since we know it executed without issues.
+    // @todo: Might want to rename "completeMemInst" to something that
+    // indicates that it won't need to be replayed, and call this
+    // earlier.  Might not be a big deal.
+    if (completed_inst->isMemRef()) {
+        memDepUnit[completed_inst->threadNumber].wakeDependents(
+                completed_inst);
+        completeMemInst(completed_inst);
+    } else if (completed_inst->isMemBarrier() ||
+            completed_inst->isWriteBarrier()) {
+        memDepUnit[completed_inst->threadNumber].completeBarrier(
+                completed_inst);
+    }
+
+    for (int dest_reg_idx = 0;
+            dest_reg_idx < completed_inst->numDestRegs();
+            dest_reg_idx++)
+    {
+        PhysRegIdPtr dest_reg =
+            completed_inst->renamedDestRegIdx(dest_reg_idx);
+
+        // Special case of uniq or control registers.  They are not
+        // handled by the IQ and thus have no dependency graph entry.
+        if (dest_reg->isFixedMapping()) {
+            DPRINTF(IQ, "Reg %d [%s] is part of a fix mapping, skipping\n",
+                    dest_reg->index(), dest_reg->className());
+            continue;
+        }
+
+        DPRINTF(IQ, "Waking any dependents on register %i (%s).\n",
+                dest_reg->index(),
+                dest_reg->className());
+
+        //Go through the dependency chain, marking the registers as
+        //ready within the waiting instructions.
+        DynInstPtr dep_inst = dependGraph.pop(dest_reg->flatIndex());
+
+        if (dep_inst) {
+            DPRINTF(IQ, "Waking up a dependent instruction, [sn:%lli] "
+                    "PC %s.\n", dep_inst->seqNum, dep_inst->pcState());
+
+            // Might want to give more information to the instruction
+            // so that it knows which of its source registers is
+            // ready.  However that would mean that the dependency
+            // graph entries would need to hold the src_reg_idx.
+            dep_inst->markSrcRegReady();
+
+            addIfReady(dep_inst);
+
+            ++dependents;
+        }
+
+        // Reset the head node now that all of its dependents have
+        // been woken up.
+        if (dependGraph.empty(dest_reg->flatIndex()))
+            dependGraph.clearInst(dest_reg->flatIndex());
+        else
+            remaining = true;
+
+        // Mark the scoreboard as having that register ready.
+        regScoreboard[dest_reg->flatIndex()] = true;
+    }
+    return dependents;
+}
+
+template <class Impl>
 void
 InstructionQueue<Impl>::addReadyMemInst(DynInstPtr &ready_inst)
 {

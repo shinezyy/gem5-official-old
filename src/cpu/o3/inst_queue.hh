@@ -229,6 +229,9 @@ class InstructionQueue
     /** Wakes all dependents of a completed instruction. */
     int wakeDependents(DynInstPtr &completed_inst);
 
+    /** Wakes one dependent of a completed instruction. */
+    int wakeOneDependent(DynInstPtr &completed_inst, bool &remaining);
+
     /** Adds a ready memory instruction to the ready list. */
     void addReadyMemInst(DynInstPtr &ready_inst);
 

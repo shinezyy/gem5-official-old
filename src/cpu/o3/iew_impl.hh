@@ -49,6 +49,7 @@
 // communication happens simultaneously.
 
 #include <queue>
+#include <vector>
 
 #include "arch/utility.hh"
 #include "config/the_isa.hh"
@@ -445,9 +446,33 @@ DefaultIEW<Impl>::takeOverFrom()
 
 template<class Impl>
 void
+DefaultIEW<Impl>::squashForwardFlow(
+        const InstSeqNum &squashed_num, ThreadID tid)
+{
+    typename vector<DynInstPtr>::iterator it=
+        forward_flow_late_wakeup.begin();
+    while (it != forward_flow_late_wakeup.end()) {
+        DynInstPtr squashed_inst = *it;
+        if (squashed_inst->seqNum > squashed_num
+                && squashed_inst->threadNumber == tid) {
+            DPRINTF(IEW,"[tid:%i]: ForwardFlow wake up list Instruction"
+                    " [sn:%lli] PC %s squashed.\n",
+                    tid, squashed_inst->seqNum, squashed_inst->pcState());
+            it = forward_flow_late_wakeup.erase(it);
+        }
+        else
+            it++;
+    }
+}
+
+template<class Impl>
+void
 DefaultIEW<Impl>::squash(ThreadID tid)
 {
     DPRINTF(IEW, "[tid:%i]: Squashing all instructions.\n", tid);
+
+    // squash forward flow late wakeup queue
+    squashForwardFlow(fromCommit->commitInfo[tid].doneSeqNum, tid);
 
     // Tell the IQ to start squashing.
     instQueue.squash(tid);
@@ -1404,6 +1429,33 @@ DefaultIEW<Impl>::executeInsts()
 
 template <class Impl>
 void
+DefaultIEW<Impl>::forwardFlowWakeup()
+{
+    for (int inst_num = 0; inst_num < forward_flow_late_wakeup.size();
+            inst_num++) {
+        DynInstPtr inst = forward_flow_late_wakeup[inst_num];
+        ThreadID tid = inst->threadNumber;
+
+        DPRINTF(IEW, "ForwardFlow Late Wakeup, [sn:%lli] PC %s.\n",
+                inst->seqNum, inst->pcState());
+
+        bool remaining = false;
+        int dependents = instQueue.wakeOneDependent(inst, remaining);
+        // have waken up all dependents, exhausted the chain
+        if (!remaining) {
+            forward_flow_late_wakeup.erase(forward_flow_late_wakeup.begin()
+                    + inst_num);
+        }
+
+        if (dependents) {
+            consumerInst[tid]+= dependents;
+        }
+    }
+}
+
+
+template <class Impl>
+void
 DefaultIEW<Impl>::writebackInsts()
 {
     // Loop through the head of the time buffer and wake any
@@ -1429,8 +1481,13 @@ DefaultIEW<Impl>::writebackInsts()
         // E.g. Strictly ordered loads have not actually executed when they
         // are first sent to commit.  Instead commit must tell the LSQ
         // when it's ready to execute the strictly ordered load.
-        if (!inst->isSquashed() && inst->isExecuted() && inst->getFault() == NoFault) {
-            int dependents = instQueue.wakeDependents(inst);
+        if (!inst->isSquashed() && inst->isExecuted()
+                && inst->getFault() == NoFault) {
+            bool remaining = false;
+            int dependents = instQueue.wakeOneDependent(inst, remaining);
+            if (remaining) {
+                forward_flow_late_wakeup.push_back(inst);
+            }
 
             for (int i = 0; i < inst->numDestRegs(); i++) {
                 //mark as Ready
@@ -1479,6 +1536,8 @@ DefaultIEW<Impl>::tick()
 
     if (exeStatus != Squashing) {
         executeInsts();
+
+        forwardFlowWakeup();
 
         writebackInsts();
 
