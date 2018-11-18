@@ -34,6 +34,13 @@
 #include <string>
 #include <vector>
 
+namespace sc_gem5
+{
+
+class Object;
+
+} // namespace sc_gem5
+
 namespace sc_core
 {
 
@@ -48,7 +55,7 @@ class sc_object
     const char *name() const;
     const char *basename() const;
 
-    virtual const char *kind() const;
+    virtual const char *kind() const { return "sc_object"; }
 
     virtual void print(std::ostream & =std::cout) const;
     virtual void dump(std::ostream & =std::cout) const;
@@ -66,8 +73,7 @@ class sc_object
     const sc_attr_cltn &attr_cltn() const;
 
     // Deprecated
-    sc_simcontext *
-    simcontext() const;
+    sc_simcontext *simcontext() const;
 
   protected:
     sc_object();
@@ -75,6 +81,10 @@ class sc_object
     sc_object(const sc_object &);
     sc_object &operator = (const sc_object &);
     virtual ~sc_object();
+
+  private:
+    friend class sc_gem5::Object;
+    sc_gem5::Object *_gem5_object;
 };
 
 const std::vector<sc_object *> &sc_get_top_level_objects();

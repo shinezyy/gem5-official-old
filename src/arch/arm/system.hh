@@ -89,21 +89,25 @@ class ArmSystem : public System
     const bool _haveVirtualization;
 
     /**
+     * True if this system implements the Crypto Extension
+     */
+    const bool _haveCrypto;
+
+    /**
      * Pointer to the Generic Timer wrapper.
      */
     GenericTimer *_genericTimer;
+
+    /**
+     * Reset address (ARMv8)
+     */
+    const Addr _resetAddr;
 
     /**
      * True if the register width of the highest implemented exception level is
      * 64 bits (ARMv8)
      */
     bool _highestELIs64;
-
-    /**
-     * Reset address if the highest implemented exception level is 64 bits
-     * (ARMv8)
-     */
-    const Addr _resetAddr64;
 
     /**
      * Supported physical address range in bits if the highest implemented
@@ -177,6 +181,11 @@ class ArmSystem : public System
       */
     bool haveVirtualization() const { return _haveVirtualization; }
 
+    /** Returns true if this system implements the Crypto
+      * Extension
+      */
+    bool haveCrypto() const { return _haveCrypto; }
+
     /** Sets the pointer to the Generic Timer. */
     void setGenericTimer(GenericTimer *generic_timer)
     {
@@ -202,7 +211,7 @@ class ArmSystem : public System
 
     /** Returns the reset address if the highest implemented exception level is
      * 64 bits (ARMv8) */
-    Addr resetAddr64() const { return _resetAddr64; }
+    Addr resetAddr() const { return _resetAddr; }
 
     /** Returns true if ASID is 16 bits in AArch64 (ARMv8) */
     bool haveLargeAsid64() const { return _haveLargeAsid64; }
@@ -273,7 +282,7 @@ class ArmSystem : public System
     /** Returns the reset address if the highest implemented exception level
      * for the system of a specific thread context is 64 bits (ARMv8)
      */
-    static Addr resetAddr64(ThreadContext *tc);
+    static Addr resetAddr(ThreadContext *tc);
 
     /** Returns the supported physical address range in bits for the system of a
      * specific thread context

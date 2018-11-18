@@ -30,10 +30,12 @@
 #ifndef __SYSTEMC_EXT_CORE__CORE_HH__
 #define __SYSTEMC_EXT_CORE__CORE_HH__
 
+#include "messages.hh"
 #include "sc_attr.hh"
 #include "sc_event.hh"
 #include "sc_export.hh"
 #include "sc_interface.hh"
+#include "sc_join.hh"
 #include "sc_main.hh"
 #include "sc_module.hh"
 #include "sc_module_name.hh"

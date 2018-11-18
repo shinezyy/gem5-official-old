@@ -1228,6 +1228,11 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                 break;
             }
             break;
+          case 11:
+          case 15:
+            // SYS Instruction with CRn = { 11, 15 }
+            // (Trappable by HCR_EL2.TIDCP)
+            return MISCREG_IMPDEF_UNIMPL;
         }
         break;
       case 2:
@@ -1539,7 +1544,9 @@ decodeAArch64SysReg(unsigned op0, unsigned op1,
                         return MISCREG_ID_AA64MMFR0_EL1;
                       case 1:
                         return MISCREG_ID_AA64MMFR1_EL1;
-                      case 2 ... 7:
+                      case 2:
+                        return MISCREG_ID_AA64MMFR2_EL1;
+                      case 3 ... 7:
                         return MISCREG_RAZ;
                     }
                     break;
@@ -3158,7 +3165,10 @@ ISA::initializeMiscRegMetadata()
       .bankedChild()
       .secure().exceptUserMode();
     InitReg(MISCREG_MVBAR)
-      .mon().secure().exceptUserMode();
+      .mon().secure()
+      .hypRead(FullSystem && system->highestEL() == EL2)
+      .privRead(FullSystem && system->highestEL() == EL1)
+      .exceptUserMode();
     InitReg(MISCREG_RMR)
       .unimplemented()
       .mon().secure().exceptUserMode();
@@ -3503,6 +3513,8 @@ ISA::initializeMiscRegMetadata()
     InitReg(MISCREG_ID_AA64MMFR0_EL1)
       .allPrivileges().exceptUserMode().writes(0);
     InitReg(MISCREG_ID_AA64MMFR1_EL1)
+      .allPrivileges().exceptUserMode().writes(0);
+    InitReg(MISCREG_ID_AA64MMFR2_EL1)
       .allPrivileges().exceptUserMode().writes(0);
     InitReg(MISCREG_CCSIDR_EL1)
       .allPrivileges().exceptUserMode().writes(0);
