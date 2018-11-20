@@ -44,6 +44,7 @@
 #define __CPU_O3_DEP_GRAPH_HH__
 
 #include "cpu/o3/comm.hh"
+#include "debug/DEPENDGRAPH.hh"
 
 /** Node in a linked list. */
 template <class DynInstPtr>
@@ -101,6 +102,16 @@ class DependencyGraph
 
     /** Removes an instruction from a single linked list. */
     void remove(PhysRegIndex idx, DynInstPtr &inst_to_remove);
+
+    void markInstrSrcRegReady(DynInstPtr &inst, PhysRegIndex phy_reg_idx);
+
+    /** Traverse the list and mark all dependents' corresponding camSrcRegReady
+     * if dependent's all src are ready in a CAM implementatioin,
+     * then record the CAM ready timestamp in the instr
+     * */
+    void markInstrCAMSrcRegReady(DynInstPtr &inst, PhysRegIndex phy_reg_idx);
+
+    void camWakeupSrcReg(PhysRegIndex idx);
 
     /** Removes and returns the newest dependent of a specific register. */
     DynInstPtr pop(PhysRegIndex idx);
@@ -236,6 +247,66 @@ DependencyGraph<DynInstPtr>::remove(PhysRegIndex idx,
     curr->inst = NULL;
 
     delete curr;
+}
+
+template <class DynInstPtr>
+void
+DependencyGraph<DynInstPtr>::markInstrSrcRegReady(DynInstPtr &inst,
+        PhysRegIndex phy_reg_idx)
+{
+    int total_src_regs = inst->numSrcRegs();
+    for (int src_reg_idx = 0; src_reg_idx < total_src_regs;
+            src_reg_idx++) {
+        if (phy_reg_idx == inst->renamedSrcRegIdx(src_reg_idx)->flatIndex() &&
+                !inst->isReadySrcRegIdx(src_reg_idx)){
+            DPRINTF(DEPENDGRAPH,
+                    "ForwardFlow wakeup"
+                    " %i is #%i src reg of inst[sn:%lli]\n",
+                    phy_reg_idx, src_reg_idx, inst->seqNum);
+            inst->markSrcRegReady(src_reg_idx);
+            return;
+        }
+    }
+    fatal("Src reg index not found.\n");
+}
+
+template <class DynInstPtr>
+void
+DependencyGraph<DynInstPtr>::markInstrCAMSrcRegReady(DynInstPtr &inst,
+        PhysRegIndex phy_reg_idx)
+{
+    int total_src_regs = inst->numSrcRegs();
+    for (int src_reg_idx = 0; src_reg_idx < total_src_regs;
+            src_reg_idx++) {
+        if (phy_reg_idx == inst->renamedSrcRegIdx(src_reg_idx)->flatIndex() &&
+                !inst->isCAMReadySrcRegIdx(src_reg_idx)){
+            DPRINTF(DEPENDGRAPH,
+                    "CAM wakeup"
+                    " %i is #%i src reg of inst[sn:%lli]\n",
+                    phy_reg_idx, src_reg_idx, inst->seqNum);
+            inst->markCAMSrcRegReady(src_reg_idx);
+            return;
+        }
+    }
+    fatal("Src reg index not found.\n");
+}
+
+template <class DynInstPtr>
+void
+DependencyGraph<DynInstPtr>::camWakeupSrcReg(PhysRegIndex idx)
+{
+    DepEntry *curr = dependGraph[idx].next;
+
+    while (curr != NULL) {
+        DynInstPtr inst = curr->inst;
+        markInstrCAMSrcRegReady(inst, idx);
+        if (inst->camReadyToIssue()) {
+            DPRINTF(DEPENDGRAPH,
+                    "setCAMReadyToIssueTick: inst[sn:%lli]\n", inst->seqNum);
+            inst->setCAMReadyToIssueTick(curTick());
+        }
+        curr = curr->next;
+    }
 }
 
 template <class DynInstPtr>

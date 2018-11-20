@@ -184,6 +184,10 @@ DefaultCommit<Impl>::regStats()
         .desc("The number of times a branch was mispredicted")
         .prereq(branchMispredicts);
 
+    forwardFlowWakeupLatencyCycles
+        .name(name() + ".forwardFlowWakeupLatencyCycles")
+        .desc("ForwardFlow wake up latency cycles");
+
     numCommittedDist
         .init(0,commitWidth,1)
         .name(name() + ".committed_per_cycle")
@@ -1379,6 +1383,12 @@ DefaultCommit<Impl>::updateComInstStats(DynInstPtr &inst)
     if (!inst->isMicroop() || inst->isLastMicroop())
         instsCommitted[tid]++;
     opsCommitted[tid]++;
+
+    forwardFlowWakeupLatencyCycles += inst->getCAMReadyToIssueTick();
+
+    DPRINTF(Commit, "forwardFlowWakeupLatencyCycles "
+            "[sn:%lli] [latency:%lli]\n",
+            inst->seqNum, inst->getCAMReadyToIssueTick());
 
     // To match the old model, don't count nops and instruction
     // prefetches towards the total commit count.

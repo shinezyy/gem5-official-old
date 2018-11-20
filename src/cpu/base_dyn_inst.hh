@@ -175,12 +175,27 @@ class BaseDynInst : public ExecContext, public RefCounted
     /** The status of this BaseDynInst.  Several bits can be set. */
     std::bitset<NumStatus> status;
 
+    bool camCanIssue;
+
      /** Whether or not the source register is ready.
      *  @todo: Not sure this should be here vs the derived class.
      */
     std::bitset<MaxInstSrcRegs> _readySrcRegIdx;
 
+    std::bitset<MaxInstSrcRegs> _camReadySrcRegIdx;
+
+    Tick camReadyToIssueTick;
+
   public:
+    /** Whether the instr has been waken up in IQ.
+     * if all src reg are ready before entering IQ,
+     * then wakenUp is always false
+     * and forward flow incurs no extra scheduling latency.
+     * Use this flag to distinguish those that has been waken up
+     * and scheduled by forward.
+     * */
+    bool wakenUp;
+
     /** The thread this instruction is from. */
     ThreadID threadNumber;
 
@@ -196,6 +211,9 @@ class BaseDynInst : public ExecContext, public RefCounted
 
     /** How many source registers are ready. */
     uint8_t readyRegs;
+
+    /** How many source registers are ready. */
+    uint8_t camReadyRegs;
 
   public:
     /////////////////////// Load Store Data //////////////////////
@@ -698,6 +716,23 @@ class BaseDynInst : public ExecContext, public RefCounted
         return this->_readySrcRegIdx[idx];
     }
 
+    /** Records that one of the source registers is ready. */
+    void markCAMSrcRegReady();
+
+    /** Marks a specific register as ready. */
+    void markCAMSrcRegReady(RegIndex src_idx);
+
+    /** Returns if a source register is ready in a CAM implementation. */
+    bool isCAMReadySrcRegIdx(int idx) const
+    {
+        return this->_camReadySrcRegIdx[idx];
+    }
+
+    Tick getCAMReadyToIssueTick() const { return camReadyToIssueTick; }
+    void setCAMReadyToIssueTick(Tick curr_tick) {
+        camReadyToIssueTick = curr_tick;
+    }
+
     /** Sets this instruction as completed. */
     void setCompleted() { status.set(Completed); }
 
@@ -712,6 +747,11 @@ class BaseDynInst : public ExecContext, public RefCounted
 
     /** Sets this instruction as ready to issue. */
     void setCanIssue() { status.set(CanIssue); }
+
+    /** Sets this instruction as ready to issue. */
+    void setCAMCanIssue() { camCanIssue = true; }
+
+    bool camReadyToIssue() { return camCanIssue; }
 
     /** Returns whether or not this instruction is ready to issue. */
     bool readyToIssue() const { return status[CanIssue]; }

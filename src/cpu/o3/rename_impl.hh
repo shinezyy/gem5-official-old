@@ -1055,6 +1055,7 @@ DefaultRename<Impl>::renameSrcRegs(DynInstPtr &inst, ThreadID tid)
                     renamed_reg->className());
 
             inst->markSrcRegReady(src_idx);
+            inst->markCAMSrcRegReady(src_idx);
         } else {
             DPRINTF(Rename, "[tid:%u]: Register %d (flat: %d) (%s)"
                     " is not ready.\n", tid, renamed_reg->index(),

@@ -277,8 +277,6 @@ class InstructionQueue
 
   private:
 
-    void markInstrSrcRegReady(DynInstPtr &inst, PhysRegIndex phy_reg_idx);
-
     /** Does the actual squashing. */
     void doSquash(ThreadID tid);
 

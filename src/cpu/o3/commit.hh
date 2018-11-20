@@ -492,6 +492,8 @@ class DefaultCommit
     /** Distribution of the number of committed instructions each cycle. */
     Stats::Distribution numCommittedDist;
 
+    Stats::Scalar forwardFlowWakeupLatencyCycles;
+
     /** Total number of instructions committed. */
     Stats::Vector instsCommitted;
     /** Total number of ops (including micro ops) committed. */

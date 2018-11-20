@@ -62,6 +62,7 @@ if 'O3CPU' in env['CPU_MODELS']:
     DebugFlag('CommitRate')
     DebugFlag('IEW')
     DebugFlag('IQ')
+    DebugFlag('DEPENDGRAPH')
     DebugFlag('LSQ')
     DebugFlag('LSQUnit')
     DebugFlag('MemDepUnit')
@@ -73,8 +74,9 @@ if 'O3CPU' in env['CPU_MODELS']:
     DebugFlag('Writeback')
 
     CompoundFlag('O3CPUAll', [ 'Fetch', 'Decode', 'Rename', 'IEW', 'Commit',
-        'IQ', 'ROB', 'FreeList', 'LSQ', 'LSQUnit', 'StoreSet', 'MemDepUnit',
-        'DynInst', 'O3CPU', 'Activity', 'Scoreboard', 'Writeback' ])
+        'IQ', 'DEPENDGRAPH', 'ROB', 'FreeList', 'LSQ', 'LSQUnit', 'StoreSet',
+        'MemDepUnit', 'DynInst', 'O3CPU', 'Activity', 'Scoreboard',
+        'Writeback' ])
 
     SimObject('O3Checker.py')
     Source('checker.cc')

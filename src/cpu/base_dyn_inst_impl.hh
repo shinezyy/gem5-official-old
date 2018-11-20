@@ -91,6 +91,9 @@ BaseDynInst<Impl>::initVars()
     physEffAddrLow = 0;
     physEffAddrHigh = 0;
     readyRegs = 0;
+    camReadyRegs = 0;
+    camCanIssue = false;
+    wakenUp = false;
     memReqFlags = 0;
 
     status.reset();
@@ -199,7 +202,8 @@ template <class Impl>
 void
 BaseDynInst<Impl>::markSrcRegReady()
 {
-    DPRINTF(IQ, "[sn:%lli] has %d ready out of %d sources. RTI %d)\n",
+    DPRINTF(IQ, "markSrcRegReady "
+            "[sn:%lli] has %d ready out of %d sources. RTI %d)\n",
             seqNum, readyRegs+1, numSrcRegs(), readyToIssue());
     if (++readyRegs == numSrcRegs()) {
         setCanIssue();
@@ -213,6 +217,27 @@ BaseDynInst<Impl>::markSrcRegReady(RegIndex src_idx)
     _readySrcRegIdx[src_idx] = true;
 
     markSrcRegReady();
+}
+
+template <class Impl>
+void
+BaseDynInst<Impl>::markCAMSrcRegReady()
+{
+    DPRINTF(IQ, "markCAMSrcRegReady "
+            "[sn:%lli] has %d ready out of %d sources. RTI %d)\n",
+            seqNum, camReadyRegs+1, numSrcRegs(), camReadyToIssue());
+    if (++camReadyRegs == numSrcRegs()) {
+        setCAMCanIssue();
+    }
+}
+
+template <class Impl>
+void
+BaseDynInst<Impl>::markCAMSrcRegReady(RegIndex src_idx)
+{
+    _camReadySrcRegIdx[src_idx] = true;
+
+    markCAMSrcRegReady();
 }
 
 template <class Impl>

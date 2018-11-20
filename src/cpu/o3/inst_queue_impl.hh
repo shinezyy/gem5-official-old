@@ -994,26 +994,6 @@ InstructionQueue<Impl>::commit(const InstSeqNum &inst, ThreadID tid)
 }
 
 template <class Impl>
-void InstructionQueue<Impl>::markInstrSrcRegReady(DynInstPtr &inst,
-        PhysRegIndex phy_reg_idx)
-{
-    int total_src_regs = inst->numSrcRegs();
-    for (int src_reg_idx = 0; src_reg_idx < total_src_regs;
-            src_reg_idx++) {
-        if (phy_reg_idx == inst->renamedSrcRegIdx(src_reg_idx)->flatIndex() &&
-                !inst->isReadySrcRegIdx(src_reg_idx)){
-            DPRINTF(IQ,
-                    "markInstrSrcRegReady"
-                    " %i is #%i src reg of inst[sn:%lli]\n",
-                    phy_reg_idx, src_reg_idx, inst->seqNum);
-            inst->markSrcRegReady(src_reg_idx);
-            return;
-        }
-    }
-    fatal("Src reg index not found.\n");
-}
-
-template <class Impl>
 int
 InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
 {
@@ -1077,7 +1057,7 @@ InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
             // so that it knows which of its source registers is
             // ready.  However that would mean that the dependency
             // graph entries would need to hold the src_reg_idx.
-            markInstrSrcRegReady(dep_inst, dest_reg->flatIndex());
+            dependGraph.markInstrSrcRegReady(dep_inst, dest_reg->flatIndex());
 
             addIfReady(dep_inst);
 
@@ -1151,9 +1131,13 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
             continue;
         }
 
-        DPRINTF(IQ, "Waking any dependents on register %i (%s).\n",
+        DPRINTF(IQ, "Waking one dependent on register %i (%s).\n",
                 dest_reg->index(),
                 dest_reg->className());
+
+        if (firstWakeUp) {
+            dependGraph.camWakeupSrcReg(dest_reg->flatIndex());
+        }
 
         //Go through the dependency chain, marking the registers as
         //ready within the waiting instructions.
@@ -1167,7 +1151,7 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
             // so that it knows which of its source registers is
             // ready.  However that would mean that the dependency
             // graph entries would need to hold the src_reg_idx.
-            markInstrSrcRegReady(dep_inst, dest_reg->flatIndex());
+            dependGraph.markInstrSrcRegReady(dep_inst, dest_reg->flatIndex());
 
             addIfReady(dep_inst);
 
@@ -1482,8 +1466,8 @@ InstructionQueue<Impl>::addToDependents(DynInstPtr &new_inst)
     bool return_val = false;
 
     for (int src_reg_idx = 0;
-         src_reg_idx < total_src_regs;
-         src_reg_idx++)
+            src_reg_idx < total_src_regs;
+            src_reg_idx++)
     {
         // Only add it to the dependency graph if it's not ready.
         if (!new_inst->isReadySrcRegIdx(src_reg_idx)) {
@@ -1513,9 +1497,18 @@ InstructionQueue<Impl>::addToDependents(DynInstPtr &new_inst)
                         src_reg->className());
                 // Mark a register ready within the instruction.
                 new_inst->markSrcRegReady(src_reg_idx);
+                new_inst->markCAMSrcRegReady(src_reg_idx);
             }
         }
     }
+    // all src ready before entering IQ
+    // in this case, forward flow incurs no extra scheduling latency
+    if (new_inst->readyToIssue()) {
+        new_inst->wakenUp = false;
+        new_inst->setCAMReadyToIssueTick(0LL);
+    }
+    else
+        new_inst->wakenUp = true;
 
     return return_val;
 }
@@ -1563,6 +1556,18 @@ InstructionQueue<Impl>::addIfReady(DynInstPtr &inst)
     // If the instruction now has all of its source registers
     // available, then add it to the list of ready instructions.
     if (inst->readyToIssue()) {
+        // record forward flow scheduling latency
+        if (inst->wakenUp) {
+            Tick camReadyToIssueTick = inst->getCAMReadyToIssueTick();
+            Tick forwardFlowReadyToIssueTick = curTick();
+            Tick forwardFlowLatency =
+                forwardFlowReadyToIssueTick - camReadyToIssueTick;
+            inst->setCAMReadyToIssueTick(forwardFlowLatency);
+
+            DPRINTF(DEPENDGRAPH,
+                    "forwardFlowLatency: inst[sn:%lli] latency[tick:%lli]\n",
+                    inst->seqNum, forwardFlowLatency);
+        }
 
         //Add the instruction to the proper ready list.
         if (inst->isMemRef()) {
@@ -1589,7 +1594,7 @@ InstructionQueue<Impl>::addIfReady(DynInstPtr &inst)
         if (!queueOnList[op_class]) {
             addToOrderList(op_class);
         } else if (readyInsts[op_class].top()->seqNum  <
-                   (*readyIt[op_class]).oldestInst) {
+                (*readyIt[op_class]).oldestInst) {
             listOrder.erase(readyIt[op_class]);
             addToOrderList(op_class);
         }
