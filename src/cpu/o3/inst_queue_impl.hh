@@ -994,6 +994,26 @@ InstructionQueue<Impl>::commit(const InstSeqNum &inst, ThreadID tid)
 }
 
 template <class Impl>
+void InstructionQueue<Impl>::markInstrSrcRegReady(DynInstPtr &inst,
+        PhysRegIndex phy_reg_idx)
+{
+    int total_src_regs = inst->numSrcRegs();
+    for (int src_reg_idx = 0; src_reg_idx < total_src_regs;
+            src_reg_idx++) {
+        if (phy_reg_idx == inst->renamedSrcRegIdx(src_reg_idx)->flatIndex() &&
+                !inst->isReadySrcRegIdx(src_reg_idx)){
+            DPRINTF(IQ,
+                    "markInstrSrcRegReady"
+                    " %i is #%i src reg of inst[sn:%lli]\n",
+                    phy_reg_idx, src_reg_idx, inst->seqNum);
+            inst->markSrcRegReady(src_reg_idx);
+            return;
+        }
+    }
+    fatal("Src reg index not found.\n");
+}
+
+template <class Impl>
 int
 InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
 {
@@ -1057,7 +1077,7 @@ InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
             // so that it knows which of its source registers is
             // ready.  However that would mean that the dependency
             // graph entries would need to hold the src_reg_idx.
-            dep_inst->markSrcRegReady();
+            markInstrSrcRegReady(dep_inst, dest_reg->flatIndex());
 
             addIfReady(dep_inst);
 
@@ -1080,7 +1100,7 @@ InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
 template <class Impl>
 int
 InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
-        bool &remaining)
+        bool &remaining, bool firstWakeUp)
 {
     int dependents = 0;
     remaining = false;
@@ -1104,14 +1124,16 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
     // @todo: Might want to rename "completeMemInst" to something that
     // indicates that it won't need to be replayed, and call this
     // earlier.  Might not be a big deal.
-    if (completed_inst->isMemRef()) {
-        memDepUnit[completed_inst->threadNumber].wakeDependents(
-                completed_inst);
-        completeMemInst(completed_inst);
-    } else if (completed_inst->isMemBarrier() ||
-            completed_inst->isWriteBarrier()) {
-        memDepUnit[completed_inst->threadNumber].completeBarrier(
-                completed_inst);
+    if (firstWakeUp) {
+        if (completed_inst->isMemRef()) {
+            memDepUnit[completed_inst->threadNumber].wakeDependents(
+                    completed_inst);
+            completeMemInst(completed_inst);
+        } else if (completed_inst->isMemBarrier() ||
+                completed_inst->isWriteBarrier()) {
+            memDepUnit[completed_inst->threadNumber].completeBarrier(
+                    completed_inst);
+        }
     }
 
     for (int dest_reg_idx = 0;
@@ -1145,7 +1167,7 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
             // so that it knows which of its source registers is
             // ready.  However that would mean that the dependency
             // graph entries would need to hold the src_reg_idx.
-            dep_inst->markSrcRegReady();
+            markInstrSrcRegReady(dep_inst, dest_reg->flatIndex());
 
             addIfReady(dep_inst);
 

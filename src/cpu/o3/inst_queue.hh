@@ -230,7 +230,8 @@ class InstructionQueue
     int wakeDependents(DynInstPtr &completed_inst);
 
     /** Wakes one dependent of a completed instruction. */
-    int wakeOneDependent(DynInstPtr &completed_inst, bool &remaining);
+    int wakeOneDependent(DynInstPtr &completed_inst, bool &remaining,
+            bool firstWakeUp);
 
     /** Adds a ready memory instruction to the ready list. */
     void addReadyMemInst(DynInstPtr &ready_inst);
@@ -275,6 +276,9 @@ class InstructionQueue
     void printInsts();
 
   private:
+
+    void markInstrSrcRegReady(DynInstPtr &inst, PhysRegIndex phy_reg_idx);
+
     /** Does the actual squashing. */
     void doSquash(ThreadID tid);
 

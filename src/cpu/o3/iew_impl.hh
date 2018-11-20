@@ -1440,7 +1440,7 @@ DefaultIEW<Impl>::forwardFlowWakeup()
                 inst->seqNum, inst->pcState());
 
         bool remaining = false;
-        int dependents = instQueue.wakeOneDependent(inst, remaining);
+        int dependents = instQueue.wakeOneDependent(inst, remaining, false);
         // have waken up all dependents, exhausted the chain
         if (!remaining) {
             forward_flow_late_wakeup.erase(forward_flow_late_wakeup.begin()
@@ -1484,7 +1484,7 @@ DefaultIEW<Impl>::writebackInsts()
         if (!inst->isSquashed() && inst->isExecuted()
                 && inst->getFault() == NoFault) {
             bool remaining = false;
-            int dependents = instQueue.wakeOneDependent(inst, remaining);
+            int dependents = instQueue.wakeOneDependent(inst, remaining, true);
             if (remaining) {
                 forward_flow_late_wakeup.push_back(inst);
             }
