@@ -63,6 +63,7 @@ from common import CacheConfig
 from common import CpuConfig
 from common import MemConfig
 from common import SSOptions
+from common import SSConfig
 from common.Caches import *
 from common.cpu2000 import *
 
@@ -205,6 +206,8 @@ if options.elastic_trace_en:
 # frequency.
 for cpu in system.cpu:
     cpu.clk_domain = system.cpu_clk_domain
+    if (options.cpu_type == "DerivO3CPU"):
+        SSConfig.modifyO3CPUConfig(options, cpu)
 
 if CpuConfig.is_kvm_cpu(CPUClass) or CpuConfig.is_kvm_cpu(FutureClass):
     if buildEnv['TARGET_ISA'] == 'x86':
