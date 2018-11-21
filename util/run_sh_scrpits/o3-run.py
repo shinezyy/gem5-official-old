@@ -16,7 +16,7 @@ outdir = uexp('~/gem5-results/micro-benchmarks/')
 
 arch = 'RISCV'
 
-def example_to_restore_cpt(cmd, some_extra_args, outdir_b):
+def example_to_run_other_binary(cmd, some_extra_args, outdir_b):
 
     interval = 200*10**6
     warmup = 20*10**6
@@ -83,7 +83,7 @@ def run(args):
 
     if prerequisite:
         print('prerequisite satisified, is going to run {} on gem5'.format(cmd))
-        c.avoid_repeated(example_to_restore_cpt, outdir_b,
+        c.avoid_repeated(example_to_run_other_binary, outdir_b,
                 cmd, some_extra_args, outdir_b)
     else:
         print('prerequisite not satisified, abort on', cmd)
