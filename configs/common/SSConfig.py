@@ -1,4 +1,5 @@
 def modifyO3CPUConfig(options, cpu):
+    print('modifying O3 cpu config')
     if options.num_ROB:
         cpu.numROBEntries = options.num_ROB
     if options.num_IQ:
