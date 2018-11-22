@@ -49,6 +49,7 @@
 // communication happens simultaneously.
 
 #include <queue>
+#include <utility>
 #include <vector>
 
 #include "arch/utility.hh"
@@ -449,16 +450,16 @@ void
 DefaultIEW<Impl>::squashForwardFlow(
         const InstSeqNum &squashed_num, ThreadID tid)
 {
-    typename vector<DynInstPtr>::iterator it=
-        forward_flow_late_wakeup.begin();
-    while (it != forward_flow_late_wakeup.end()) {
-        DynInstPtr squashed_inst = *it;
+    typename vector<std::pair<DynInstPtr, bool> >::iterator it=
+        forwardFlowWakeupQueue.begin();
+    while (it != forwardFlowWakeupQueue.end()) {
+        DynInstPtr squashed_inst = it->first;
         if (squashed_inst->seqNum > squashed_num
                 && squashed_inst->threadNumber == tid) {
             DPRINTF(IEW,"[tid:%i]: ForwardFlow wake up list Instruction"
                     " [sn:%lli] PC %s squashed.\n",
                     tid, squashed_inst->seqNum, squashed_inst->pcState());
-            it = forward_flow_late_wakeup.erase(it);
+            it = forwardFlowWakeupQueue.erase(it);
         }
         else
             it++;
@@ -1428,46 +1429,86 @@ DefaultIEW<Impl>::executeInsts()
 }
 
 template <class Impl>
-void
+int
 DefaultIEW<Impl>::forwardFlowWakeup()
 {
-    for (int inst_num = 0; inst_num < forward_flow_late_wakeup.size();
-            inst_num++) {
-        DynInstPtr inst = forward_flow_late_wakeup[inst_num];
-        ThreadID tid = inst->threadNumber;
+    int inst_num = 0;
+    for (; inst_num < wbWidth &&
+            inst_num < forwardFlowWakeupQueue.size();
+        ) {
+        DynInstPtr inst = forwardFlowWakeupQueue[inst_num].first;
+        bool is_first_wakeup = forwardFlowWakeupQueue[inst_num].second;
 
-        DPRINTF(IEW, "ForwardFlow Late Wakeup, [sn:%lli] PC %s.\n",
+        DPRINTF(IEW, "ForwardFlow Wakeup, [sn:%lli] PC %s.\n",
                 inst->seqNum, inst->pcState());
 
-        bool remaining = false;
-        int dependents = instQueue.wakeOneDependent(inst, remaining, false);
+        bool remaining = writebackInst(inst, is_first_wakeup, true);
+        forwardFlowWakeupQueue[inst_num].second = false;
         // have waken up all dependents, exhausted the chain
-        if (!remaining) {
-            forward_flow_late_wakeup.erase(forward_flow_late_wakeup.begin()
+        if (!remaining)
+            forwardFlowWakeupQueue.erase(forwardFlowWakeupQueue.begin()
                     + inst_num);
-        }
-
-        if (dependents) {
-            consumerInst[tid]+= dependents;
-        }
+        else
+            inst_num++;
     }
+    return wbWidth - inst_num;
 }
 
 
 template <class Impl>
 void
-DefaultIEW<Impl>::writebackInsts()
+DefaultIEW<Impl>::writebackInsts(int remaining_wb_bandwidth)
 {
     // Loop through the head of the time buffer and wake any
     // dependents.  These instructions are about to write back.  Also
     // mark scoreboard that this instruction is finally complete.
     // Either have IEW have direct access to scoreboard, or have this
     // as part of backwards communication.
-    for (int inst_num = 0; inst_num < wbWidth &&
-             toCommit->insts[inst_num]; inst_num++) {
-        DynInstPtr inst = toCommit->insts[inst_num];
-        ThreadID tid = inst->threadNumber;
 
+    int inst_num;
+
+    // CAM wakeup
+    // a cam scheduler does not need to share write back ports with
+    // forward flow wake up queue
+    // so it can use all the write back bandwidth
+    for (inst_num = 0; inst_num < wbWidth &&
+            toCommit->insts[inst_num]; inst_num++) {
+        DynInstPtr inst = toCommit->insts[inst_num];
+
+        if (!inst->isSquashed() && inst->isExecuted()
+                && inst->getFault() == NoFault) {
+            instQueue.wakeDependents(inst);
+        }
+    }
+
+
+    // forward flow wakeup
+    // share wake up ports with forward flow wake up queue
+    for (inst_num = 0; inst_num < remaining_wb_bandwidth &&
+            toCommit->insts[inst_num]; inst_num++) {
+        DynInstPtr inst = toCommit->insts[inst_num];
+        writebackInst(inst, true, false);
+    }
+
+    // the number of write back ports is limited
+    // add these instructions to forward flow wake up queue
+    // and do write back in later cycles
+    for (; inst_num < wbWidth &&
+            toCommit->insts[inst_num]; inst_num++) {
+        DynInstPtr inst = toCommit->insts[inst_num];
+        forwardFlowWakeupQueue.push_back(std::make_pair(inst, true));
+    }
+}
+
+// instruction write back and wakeup
+template <class Impl>
+bool
+DefaultIEW<Impl>::writebackInst(DynInstPtr &inst,
+        bool isFirstWakeUp, bool fromForwardFlowWakeupQueue)
+{
+    ThreadID tid = inst->threadNumber;
+
+    if (isFirstWakeUp) {
         DPRINTF(IEW, "Sending instructions to commit, [sn:%lli] PC %s.\n",
                 inst->seqNum, inst->pcState());
 
@@ -1475,20 +1516,22 @@ DefaultIEW<Impl>::writebackInsts()
         // Notify potential listeners that execution is complete for this
         // instruction.
         ppToCommit->notify(inst);
+    }
 
-        // Some instructions will be sent to commit without having
-        // executed because they need commit to handle them.
-        // E.g. Strictly ordered loads have not actually executed when they
-        // are first sent to commit.  Instead commit must tell the LSQ
-        // when it's ready to execute the strictly ordered load.
-        if (!inst->isSquashed() && inst->isExecuted()
-                && inst->getFault() == NoFault) {
-            bool remaining = false;
-            int dependents = instQueue.wakeOneDependent(inst, remaining, true);
-            if (remaining) {
-                forward_flow_late_wakeup.push_back(inst);
-            }
+    // Some instructions will be sent to commit without having
+    // executed because they need commit to handle them.
+    // E.g. Strictly ordered loads have not actually executed when they
+    // are first sent to commit.  Instead commit must tell the LSQ
+    // when it's ready to execute the strictly ordered load.
+    bool remaining = false;
+    if (!inst->isSquashed() && inst->isExecuted()
+            && inst->getFault() == NoFault) {
+        int dependents = instQueue.wakeOneDependent(inst,
+                remaining, isFirstWakeUp);
+        if (remaining && !fromForwardFlowWakeupQueue)
+            forwardFlowWakeupQueue.push_back(std::make_pair(inst, false));
 
+        if (isFirstWakeUp) {
             for (int i = 0; i < inst->numDestRegs(); i++) {
                 //mark as Ready
                 DPRINTF(IEW,"Setting Destination Register %i (%s)\n",
@@ -1496,14 +1539,17 @@ DefaultIEW<Impl>::writebackInsts()
                         inst->renamedDestRegIdx(i)->className());
                 scoreboard->setReg(inst->renamedDestRegIdx(i));
             }
-
-            if (dependents) {
-                producerInst[tid]++;
-                consumerInst[tid]+= dependents;
-            }
             writebackCount[tid]++;
         }
+
+        if (dependents) {
+            if (isFirstWakeUp) {
+                producerInst[tid]++;
+            }
+            consumerInst[tid]+= dependents;
+        }
     }
+    return remaining;
 }
 
 template<class Impl>
@@ -1537,9 +1583,9 @@ DefaultIEW<Impl>::tick()
     if (exeStatus != Squashing) {
         executeInsts();
 
-        forwardFlowWakeup();
+        int remaining_wb_bandwidth = forwardFlowWakeup();
 
-        writebackInsts();
+        writebackInsts(remaining_wb_bandwidth);
 
         // Have the instruction queue try to schedule any ready instructions.
         // (In actuality, this scheduling is for instructions that will

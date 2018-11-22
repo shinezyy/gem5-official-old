@@ -993,42 +993,21 @@ InstructionQueue<Impl>::commit(const InstSeqNum &inst, ThreadID tid)
     assert(freeEntries == (numEntries - countInsts()));
 }
 
+// do the cam wakeup
+// does not actually wake up
+// just mark that it should be waken up, if it's a cam scheduler
 template <class Impl>
-int
+void
 InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
 {
-    int dependents = 0;
-
-    // The instruction queue here takes care of both floating and int ops
-    if (completed_inst->isFloating()) {
-        fpInstQueueWakeupAccesses++;
-    } else if (completed_inst->isVector()) {
-        vecInstQueueWakeupAccesses++;
-    } else {
-        intInstQueueWakeupAccesses++;
-    }
-
-    DPRINTF(IQ, "Waking dependents of completed instruction.\n");
+    DPRINTF(IQ, "CAM: Waking dependents of completed instruction.\n");
 
     assert(!completed_inst->isSquashed());
 
-    // Tell the memory dependence unit to wake any dependents on this
-    // instruction if it is a memory instruction.  Also complete the memory
-    // instruction at this point since we know it executed without issues.
-    // @todo: Might want to rename "completeMemInst" to something that
-    // indicates that it won't need to be replayed, and call this
-    // earlier.  Might not be a big deal.
-    if (completed_inst->isMemRef()) {
-        memDepUnit[completed_inst->threadNumber].wakeDependents(completed_inst);
-        completeMemInst(completed_inst);
-    } else if (completed_inst->isMemBarrier() ||
-               completed_inst->isWriteBarrier()) {
-        memDepUnit[completed_inst->threadNumber].completeBarrier(completed_inst);
-    }
 
     for (int dest_reg_idx = 0;
-         dest_reg_idx < completed_inst->numDestRegs();
-         dest_reg_idx++)
+            dest_reg_idx < completed_inst->numDestRegs();
+            dest_reg_idx++)
     {
         PhysRegIdPtr dest_reg =
             completed_inst->renamedDestRegIdx(dest_reg_idx);
@@ -1041,40 +1020,12 @@ InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
             continue;
         }
 
-        DPRINTF(IQ, "Waking any dependents on register %i (%s).\n",
+        DPRINTF(IQ, "CAM Waking any dependents on register %i (%s).\n",
                 dest_reg->index(),
                 dest_reg->className());
 
-        //Go through the dependency chain, marking the registers as
-        //ready within the waiting instructions.
-        DynInstPtr dep_inst = dependGraph.pop(dest_reg->flatIndex());
-
-        while (dep_inst) {
-            DPRINTF(IQ, "Waking up a dependent instruction, [sn:%lli] "
-                    "PC %s.\n", dep_inst->seqNum, dep_inst->pcState());
-
-            // Might want to give more information to the instruction
-            // so that it knows which of its source registers is
-            // ready.  However that would mean that the dependency
-            // graph entries would need to hold the src_reg_idx.
-            dependGraph.markInstrSrcRegReady(dep_inst, dest_reg->flatIndex());
-
-            addIfReady(dep_inst);
-
-            dep_inst = dependGraph.pop(dest_reg->flatIndex());
-
-            ++dependents;
-        }
-
-        // Reset the head node now that all of its dependents have
-        // been woken up.
-        assert(dependGraph.empty(dest_reg->flatIndex()));
-        dependGraph.clearInst(dest_reg->flatIndex());
-
-        // Mark the scoreboard as having that register ready.
-        regScoreboard[dest_reg->flatIndex()] = true;
+        dependGraph.camWakeupSrcReg(dest_reg->flatIndex());
     }
-    return dependents;
 }
 
 template <class Impl>

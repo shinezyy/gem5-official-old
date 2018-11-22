@@ -45,6 +45,7 @@
 
 #include <queue>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include "base/statistics.hh"
@@ -266,14 +267,17 @@ class DefaultIEW
      */
     void executeInsts();
 
-    void forwardFlowWakeup();
+    int forwardFlowWakeup();
 
     /** Writebacks instructions. In our model, the instruction's execute()
      * function atomically reads registers, executes, and writes registers.
      * Thus this writeback only wakes up dependent instructions, and informs
      * the scoreboard of registers becoming ready.
      */
-    void writebackInsts();
+    void writebackInsts(int remaining_wb_bandwidth);
+
+    bool writebackInst(DynInstPtr &inst,
+        bool isFirstWakeUp, bool fromForwardFlowWakeupQueue);
 
     /** Returns the number of valid, non-squashed instructions coming from
      * rename to dispatch.
@@ -335,7 +339,8 @@ class DefaultIEW
     /** Wire to write infromation heading to commit. */
     typename TimeBuffer<IEWStruct>::wire toCommit;
 
-    std::vector<DynInstPtr> forward_flow_late_wakeup;
+    /** pair<instruction, is_first_wake_up>. */
+    std::vector<std::pair<DynInstPtr, bool> > forwardFlowWakeupQueue;
 
     /** Queue of all instructions coming from rename this cycle. */
     std::queue<DynInstPtr> insts[Impl::MaxThreads];

@@ -288,7 +288,7 @@ DependencyGraph<DynInstPtr>::markInstrCAMSrcRegReady(DynInstPtr &inst,
             return;
         }
     }
-    fatal("Src reg index not found.\n");
+    // fatal("Src reg index not found.\n");
 }
 
 template <class DynInstPtr>

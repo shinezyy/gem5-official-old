@@ -227,7 +227,7 @@ class InstructionQueue
     void commit(const InstSeqNum &inst, ThreadID tid = 0);
 
     /** Wakes all dependents of a completed instruction. */
-    int wakeDependents(DynInstPtr &completed_inst);
+    void wakeDependents(DynInstPtr &completed_inst);
 
     /** Wakes one dependent of a completed instruction. */
     int wakeOneDependent(DynInstPtr &completed_inst, bool &remaining,

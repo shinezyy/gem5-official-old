@@ -1387,8 +1387,9 @@ DefaultCommit<Impl>::updateComInstStats(DynInstPtr &inst)
     forwardFlowWakeupLatencyCycles += inst->getCAMReadyToIssueTick();
 
     DPRINTF(Commit, "forwardFlowWakeupLatencyCycles "
-            "[sn:%lli] [latency:%lli]\n",
-            inst->seqNum, inst->getCAMReadyToIssueTick());
+            "[sn:%lli] [latency:%lli] allCycles: %lf\n",
+            inst->seqNum, inst->getCAMReadyToIssueTick(),
+            forwardFlowWakeupLatencyCycles.value());
 
     // To match the old model, don't count nops and instruction
     // prefetches towards the total commit count.
