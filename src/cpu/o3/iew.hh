@@ -43,9 +43,9 @@
 #ifndef __CPU_O3_IEW_HH__
 #define __CPU_O3_IEW_HH__
 
+#include <cstdlib>
 #include <queue>
 #include <set>
-#include <utility>
 #include <vector>
 
 #include "base/statistics.hh"
@@ -339,8 +339,28 @@ class DefaultIEW
     /** Wire to write infromation heading to commit. */
     typename TimeBuffer<IEWStruct>::wire toCommit;
 
-    /** pair<instruction, is_first_wake_up>. */
-    std::vector<std::pair<DynInstPtr, bool> > forwardFlowWakeupQueue;
+    struct ForwardFlowWakeupQueueEntry {
+        DynInstPtr inst;
+        bool isFirstWakeUp;
+        int crossBankLatency;
+    };
+    std::vector<ForwardFlowWakeupQueueEntry> forwardFlowWakeupQueue;
+
+    int getCrossBankLatency () {
+        const int crossBankLatency = 2;
+        const int nBanks = 8;
+        static bool init = false;
+        if (!init) {
+            srand(time(NULL));
+            init = true;
+        }
+        int random = rand() % nBanks;
+        // If succssor is in the same bank(probability 1/8),
+        // then wake up it with latency 0.
+        // If succssor is in other bank(probability 7/8),
+        // then wake up it with latency crossBankLatency.
+        return random == 0 ? 0 : crossBankLatency;
+    }
 
     /** Queue of all instructions coming from rename this cycle. */
     std::queue<DynInstPtr> insts[Impl::MaxThreads];
