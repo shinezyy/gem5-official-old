@@ -49,7 +49,6 @@
 // communication happens simultaneously.
 
 #include <queue>
-#include <utility>
 #include <vector>
 
 #include "arch/utility.hh"
@@ -450,10 +449,10 @@ void
 DefaultIEW<Impl>::squashForwardFlow(
         const InstSeqNum &squashed_num, ThreadID tid)
 {
-    typename vector<std::pair<DynInstPtr, bool> >::iterator it=
+    typename vector<ForwardFlowWakeupQueueEntry>::iterator it=
         forwardFlowWakeupQueue.begin();
     while (it != forwardFlowWakeupQueue.end()) {
-        DynInstPtr squashed_inst = it->first;
+        DynInstPtr squashed_inst = it->inst;
         if (squashed_inst->seqNum > squashed_num
                 && squashed_inst->threadNumber == tid) {
             DPRINTF(IEW,"[tid:%i]: ForwardFlow wake up list Instruction"
@@ -1436,14 +1435,29 @@ DefaultIEW<Impl>::forwardFlowWakeup()
     for (; inst_num < wbWidth &&
             inst_num < forwardFlowWakeupQueue.size();
         ) {
-        DynInstPtr inst = forwardFlowWakeupQueue[inst_num].first;
-        bool is_first_wakeup = forwardFlowWakeupQueue[inst_num].second;
+        ForwardFlowWakeupQueueEntry &entry = forwardFlowWakeupQueue[inst_num];
+        DynInstPtr inst = entry.inst;
+        bool is_first_wakeup = entry.isFirstWakeUp;
+        int crossBankLatency = entry.crossBankLatency;
+        if (crossBankLatency > 0) {
+            // if crossBankLatency > 0
+            // then we can not do wake up in this cycle
+            // wait for later cycles
+            entry.crossBankLatency--;
+            inst_num++;
+            continue;
+        } else
+            // if crossBankLatency = 0
+            // then we can do wake up in this cycle
+            // but remember to schedule next wakeup
+            entry.crossBankLatency = getCrossBankLatency();
+
 
         DPRINTF(IEW, "ForwardFlow Wakeup, [sn:%lli] PC %s.\n",
                 inst->seqNum, inst->pcState());
 
         bool remaining = writebackInst(inst, is_first_wakeup, true);
-        forwardFlowWakeupQueue[inst_num].second = false;
+        forwardFlowWakeupQueue[inst_num].isFirstWakeUp = false;
         // have waken up all dependents, exhausted the chain
         if (!remaining)
             forwardFlowWakeupQueue.erase(forwardFlowWakeupQueue.begin()
@@ -1496,7 +1510,11 @@ DefaultIEW<Impl>::writebackInsts(int remaining_wb_bandwidth)
     for (; inst_num < wbWidth &&
             toCommit->insts[inst_num]; inst_num++) {
         DynInstPtr inst = toCommit->insts[inst_num];
-        forwardFlowWakeupQueue.push_back(std::make_pair(inst, true));
+        ForwardFlowWakeupQueueEntry entry;
+        entry.inst = inst;
+        entry.isFirstWakeUp = true;
+        entry.crossBankLatency = getCrossBankLatency();
+        forwardFlowWakeupQueue.push_back(entry);
     }
 }
 
@@ -1528,8 +1546,13 @@ DefaultIEW<Impl>::writebackInst(DynInstPtr &inst,
             && inst->getFault() == NoFault) {
         int dependents = instQueue.wakeOneDependent(inst,
                 remaining, isFirstWakeUp);
-        if (remaining && !fromForwardFlowWakeupQueue)
-            forwardFlowWakeupQueue.push_back(std::make_pair(inst, false));
+        if (remaining && !fromForwardFlowWakeupQueue) {
+            ForwardFlowWakeupQueueEntry entry;
+            entry.inst = inst;
+            entry.isFirstWakeUp = false;
+            entry.crossBankLatency = getCrossBankLatency();
+            forwardFlowWakeupQueue.push_back(entry);
+        }
 
         if (isFirstWakeUp) {
             for (int i = 0; i < inst->numDestRegs(); i++) {
