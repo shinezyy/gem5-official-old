@@ -50,6 +50,7 @@
 #include "arch/types.hh"
 #include "base/types.hh"
 #include "cpu/inst_seq.hh"
+#include "sim/core.hh"
 #include "sim/faults.hh"
 
 /** Physical register index type.
@@ -323,6 +324,20 @@ struct TimeBufStruct {
     bool renameUnblock[Impl::MaxThreads];
     bool iewBlock[Impl::MaxThreads];
     bool iewUnblock[Impl::MaxThreads];
+};
+
+template<class Impl>
+struct ForwardFlowWakeupQueueEntry {
+    typedef typename Impl::DynInstPtr DynInstPtr;
+
+    DynInstPtr inst;
+    bool isFirstWakeUp;
+    Tick nextWakeUp;
+
+    ForwardFlowWakeupQueueEntry<Impl>()
+    {
+        isFirstWakeUp = false;
+    }
 };
 
 #endif //__CPU_O3_COMM_HH__

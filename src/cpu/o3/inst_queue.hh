@@ -230,8 +230,8 @@ class InstructionQueue
     void wakeDependents(DynInstPtr &completed_inst);
 
     /** Wakes one dependent of a completed instruction. */
-    int wakeOneDependent(DynInstPtr &completed_inst, bool &remaining,
-            bool firstWakeUp);
+    std::tuple<int, bool> wakeOneDependent(
+            DynInstPtr &completed_inst, bool firstWakeUp);
 
     /** Adds a ready memory instruction to the ready list. */
     void addReadyMemInst(DynInstPtr &ready_inst);
@@ -556,6 +556,25 @@ class InstructionQueue
     Stats::Scalar intAluAccesses;
     Stats::Scalar fpAluAccesses;
     Stats::Scalar vecAluAccesses;
+
+  private:
+
+    uint32_t BankSize;
+    static const uint32_t BGSize = 4;
+    static const uint32_t numBGs = 2;
+
+    uint32_t inst_circular_counter{};
+    uint32_t curBG{};
+
+  public:
+
+    std::array<bool, BGSize * numBGs> usedBankThisCycle;
+
+    std::tuple<uint32_t, uint32_t> allocBankID();
+
+    void clear();
+
+    DynInstPtr getNextDep(DynInstPtr &inst);
 };
 
 #endif //__CPU_O3_INST_QUEUE_HH__

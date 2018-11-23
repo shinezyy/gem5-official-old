@@ -50,6 +50,7 @@
 
 #include "cpu/o3/fu_pool.hh"
 #include "cpu/o3/inst_queue.hh"
+#include "debug/FF.hh"
 #include "debug/IQ.hh"
 #include "enums/OpClass.hh"
 #include "params/DerivO3CPU.hh"
@@ -100,9 +101,9 @@ InstructionQueue<Impl>::InstructionQueue(O3CPU *cpu_ptr, IEW *iew_ptr,
     // Set the number of total physical registers
     // As the vector registers have two addressing modes, they are added twice
     numPhysRegs = params->numPhysIntRegs + params->numPhysFloatRegs +
-                    params->numPhysVecRegs +
-                    params->numPhysVecRegs * TheISA::NumVecElemPerVecReg +
-                    params->numPhysCCRegs;
+        params->numPhysVecRegs +
+        params->numPhysVecRegs * TheISA::NumVecElemPerVecReg +
+        params->numPhysCCRegs;
 
     //Create an entry for each physical register within the
     //dependency graph.
@@ -123,7 +124,7 @@ InstructionQueue<Impl>::InstructionQueue(O3CPU *cpu_ptr, IEW *iew_ptr,
 
     //Convert string to lowercase
     std::transform(policy.begin(), policy.end(), policy.begin(),
-                   (int(*)(int)) tolower);
+            (int(*)(int)) tolower);
 
     //Figure out resource sharing policy
     if (policy == "dynamic") {
@@ -161,10 +162,13 @@ InstructionQueue<Impl>::InstructionQueue(O3CPU *cpu_ptr, IEW *iew_ptr,
 
         DPRINTF(IQ, "IQ sharing policy set to Threshold:"
                 "%i entries per thread.\n",thresholdIQ);
-   } else {
-       assert(0 && "Invalid IQ Sharing Policy.Options Are:{Dynamic,"
-              "Partitioned, Threshold}");
-   }
+    } else {
+        assert(0 && "Invalid IQ Sharing Policy.Options Are:{Dynamic,"
+                "Partitioned, Threshold}");
+    }
+    assert(numEntries % 128 == 0);
+    BankSize = numEntries/BGSize/numBGs;
+    DPRINTF(FF, "BankSize: %d\n", BankSize);
 }
 
 template <class Impl>
@@ -597,6 +601,8 @@ InstructionQueue<Impl>::insert(DynInstPtr &new_inst)
     // Make sure the instruction is valid
     assert(new_inst);
 
+    std::tie(new_inst->BGID, new_inst->bankID) = allocBankID();
+
     DPRINTF(IQ, "Adding instruction [sn:%lli] PC %s to the IQ.\n",
             new_inst->seqNum, new_inst->pcState());
 
@@ -645,6 +651,8 @@ InstructionQueue<Impl>::insertNonSpec(DynInstPtr &new_inst)
 
     assert(new_inst);
 
+    std::tie(new_inst->BGID, new_inst->bankID) = allocBankID();
+
     nonSpecInsts[new_inst->seqNum] = new_inst;
 
     DPRINTF(IQ, "Adding non-speculative instruction [sn:%lli] PC %s "
@@ -683,6 +691,8 @@ InstructionQueue<Impl>::insertBarrier(DynInstPtr &barr_inst)
     memDepUnit[barr_inst->threadNumber].insertBarrier(barr_inst);
 
     insertNonSpec(barr_inst);
+
+    std::tie(barr_inst->BGID, barr_inst->bankID) = allocBankID();
 }
 
 template <class Impl>
@@ -1029,13 +1039,14 @@ InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
 }
 
 template <class Impl>
-int
+std::tuple<int, bool>
 InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
-        bool &remaining, bool firstWakeUp)
+        bool firstWakeUp)
 {
-    int dependents = 0;
-    remaining = false;
+    DPRINTF(IQ, "Waking dependents of completed instruction.\n");
 
+    int dependents = 0;
+    bool remaining = false;
     // The instruction queue here takes care of both floating and int ops
     if (completed_inst->isFloating()) {
         fpInstQueueWakeupAccesses++;
@@ -1045,7 +1056,6 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
         intInstQueueWakeupAccesses++;
     }
 
-    DPRINTF(IQ, "Waking dependents of completed instruction.\n");
 
     assert(!completed_inst->isSquashed());
 
@@ -1111,15 +1121,16 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
 
         // Reset the head node now that all of its dependents have
         // been woken up.
-        if (dependGraph.empty(dest_reg->flatIndex()))
+        if (dependGraph.empty(dest_reg->flatIndex())) {
             dependGraph.clearInst(dest_reg->flatIndex());
-        else
+        } else {
             remaining = true;
+        }
 
         // Mark the scoreboard as having that register ready.
         regScoreboard[dest_reg->flatIndex()] = true;
     }
-    return dependents;
+    return std::make_tuple(dependents, remaining);
 }
 
 template <class Impl>
@@ -1714,6 +1725,58 @@ InstructionQueue<Impl>::dumpInsts()
         inst_list_it++;
         ++num;
     }
+}
+
+template <class Impl>
+std::tuple<uint32_t, uint32_t>
+InstructionQueue<Impl>::allocBankID()
+{
+    uint32_t bg_id = curBG,
+             bank_id = inst_circular_counter % BGSize;
+    inst_circular_counter += 1;
+    if (inst_circular_counter % BankSize == 0) {
+        if (inst_circular_counter % (BGSize * BankSize) == 0) {
+            curBG = (curBG + 1) % numBGs;
+            if (inst_circular_counter % numEntries == 0) {
+                inst_circular_counter = 0;
+            }
+        }
+    }
+    return std::make_tuple(bg_id, bank_id);
+}
+
+template <class Impl>
+void
+InstructionQueue<Impl>::clear()
+{
+    std::fill(usedBankThisCycle.begin(), usedBankThisCycle.end(), false);
+}
+
+template <class Impl>
+typename InstructionQueue<Impl>::DynInstPtr
+InstructionQueue<Impl>::getNextDep(DynInstPtr &inst)
+{
+    for (int dest_reg_idx = 0;
+            dest_reg_idx < inst->numDestRegs();
+            dest_reg_idx++)
+    {
+        PhysRegIdPtr dest_reg =
+            inst->renamedDestRegIdx(dest_reg_idx);
+
+        // Special case of uniq or control registers.  They are not
+        // handled by the IQ and thus have no dependency graph entry.
+        if (dest_reg->isFixedMapping()) {
+            continue;
+        }
+
+        //Go through the dependency chain, marking the registers as
+        //ready within the waiting instructions.
+        DynInstPtr dep_inst = dependGraph.get(dest_reg->flatIndex());
+        if (dep_inst) {
+            return dep_inst;
+        }
+    }
+    return nullptr;
 }
 
 #endif//__CPU_O3_INST_QUEUE_IMPL_HH__

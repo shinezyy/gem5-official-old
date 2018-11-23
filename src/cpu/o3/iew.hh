@@ -44,9 +44,9 @@
 #define __CPU_O3_IEW_HH__
 
 #include <cstdlib>
+#include <list>
 #include <queue>
 #include <set>
-#include <vector>
 
 #include "base/statistics.hh"
 #include "cpu/o3/comm.hh"
@@ -95,6 +95,7 @@ class DefaultIEW
     typedef typename CPUPol::IEWStruct IEWStruct;
     typedef typename CPUPol::RenameStruct RenameStruct;
     typedef typename CPUPol::IssueStruct IssueStruct;
+    typedef typename CPUPol::FFWakeUpQEntry ForwardFlowWakeupQueueEntry;
 
   public:
     /** Overall IEW stage status. Used to determine if the CPU can
@@ -267,17 +268,16 @@ class DefaultIEW
      */
     void executeInsts();
 
-    int forwardFlowWakeup();
+    void forwardFlowWakeup();
 
     /** Writebacks instructions. In our model, the instruction's execute()
      * function atomically reads registers, executes, and writes registers.
      * Thus this writeback only wakes up dependent instructions, and informs
      * the scoreboard of registers becoming ready.
      */
-    void writebackInsts(int remaining_wb_bandwidth);
+    void writebackInsts();
 
-    bool writebackInst(DynInstPtr &inst,
-        bool isFirstWakeUp, bool fromForwardFlowWakeupQueue);
+    std::tuple<bool, bool> wakeupOneDep(DynInstPtr &inst, bool isFirstWakeUp);
 
     /** Returns the number of valid, non-squashed instructions coming from
      * rename to dispatch.
@@ -339,27 +339,19 @@ class DefaultIEW
     /** Wire to write infromation heading to commit. */
     typename TimeBuffer<IEWStruct>::wire toCommit;
 
-    struct ForwardFlowWakeupQueueEntry {
-        DynInstPtr inst;
-        bool isFirstWakeUp;
-        int crossBankLatency;
-    };
-    std::vector<ForwardFlowWakeupQueueEntry> forwardFlowWakeupQueue;
+    std::array<std::map<Tick, ForwardFlowWakeupQueueEntry>, 8>
+        forwardFlowWakeupQueues;
 
-    int getCrossBankLatency () {
-        const int crossBankLatency = 2;
-        const int nBanks = 8;
-        static bool init = false;
-        if (!init) {
-            srand(time(NULL));
-            init = true;
-        }
-        int random = rand() % nBanks;
-        // If succssor is in the same bank(probability 1/8),
-        // then wake up it with latency 0.
-        // If succssor is in other bank(probability 7/8),
-        // then wake up it with latency crossBankLatency.
-        return random == 0 ? 0 : crossBankLatency;
+    uint32_t getBankID(int bank) {
+        return bank % 4;
+    }
+
+    uint32_t getBGID(int bank) {
+        return bank / 4;
+    }
+
+    uint32_t getBank(int bgid, int bank_id) {
+        return bgid * 4 + bank_id;
     }
 
     /** Queue of all instructions coming from rename this cycle. */
@@ -511,6 +503,7 @@ class DefaultIEW
     Stats::Formula wbRate;
     /** Average number of woken instructions per writeback. */
     Stats::Formula wbFanout;
+
 };
 
 #endif // __CPU_O3_IEW_HH__

@@ -427,6 +427,11 @@ class BaseO3DynInst : public BaseDynInst<Impl>
         panic("MIPS MT not defined for O3 CPU.\n");
     }
 #endif
+
+  public:
+    uint32_t BGID{};
+
+    uint32_t bankID{};
 };
 
 #endif // __CPU_O3_ALPHA_DYN_INST_HH__

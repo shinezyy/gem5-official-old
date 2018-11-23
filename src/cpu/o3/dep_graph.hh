@@ -116,6 +116,10 @@ class DependencyGraph
     /** Removes and returns the newest dependent of a specific register. */
     DynInstPtr pop(PhysRegIndex idx);
 
+    DynInstPtr get(PhysRegIndex idx);
+
+    DynInstPtr remove_after_get(PhysRegIndex idx, DynInstPtr &inst);
+
     /** Checks if the entire dependency graph is empty. */
     bool empty() const;
 
@@ -324,6 +328,33 @@ DependencyGraph<DynInstPtr>::pop(PhysRegIndex idx)
         delete node;
     }
     return inst;
+}
+
+template <class DynInstPtr>
+DynInstPtr
+DependencyGraph<DynInstPtr>::get(PhysRegIndex idx)
+{
+    DepEntry *node;
+    node = dependGraph[idx].next;
+    DynInstPtr inst = NULL;
+    if (node) {
+        inst = node->inst;
+    }
+    return inst;
+}
+
+template <class DynInstPtr>
+DynInstPtr
+DependencyGraph<DynInstPtr>::remove_after_get(PhysRegIndex idx,
+        DynInstPtr &inst)
+{
+    DepEntry *node = dependGraph[idx].next;
+    assert(node);
+    // assert(inst == node->inst);
+    dependGraph[idx].next = node->next;
+    node->inst = NULL;
+    memAllocCounter--;
+    delete node;
 }
 
 template <class DynInstPtr>

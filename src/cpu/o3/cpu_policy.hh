@@ -104,6 +104,7 @@ struct SimpleCPUPolicy
     /** The struct for all backwards communication. */
     typedef TimeBufStruct<Impl> TimeStruct;
 
+    typedef ForwardFlowWakeupQueueEntry<Impl> FFWakeUpQEntry;
 };
 
 #endif //__CPU_O3_CPU_POLICY_HH__

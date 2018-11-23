@@ -111,6 +111,10 @@ DefaultIEW<Impl>::DefaultIEW(O3CPU *_cpu, DerivO3CPUParams *params)
     updateLSQNextCycle = false;
 
     skidBufferMax = (renameToIEWDelay + 1) * params->renameWidth;
+
+    for (auto &queue: forwardFlowWakeupQueues) {
+        assert(queue.begin() == queue.end());
+    }
 }
 
 template <class Impl>
@@ -449,19 +453,20 @@ void
 DefaultIEW<Impl>::squashForwardFlow(
         const InstSeqNum &squashed_num, ThreadID tid)
 {
-    typename vector<ForwardFlowWakeupQueueEntry>::iterator it=
-        forwardFlowWakeupQueue.begin();
-    while (it != forwardFlowWakeupQueue.end()) {
-        DynInstPtr squashed_inst = it->inst;
-        if (squashed_inst->seqNum > squashed_num
-                && squashed_inst->threadNumber == tid) {
-            DPRINTF(IEW,"[tid:%i]: ForwardFlow wake up list Instruction"
-                    " [sn:%lli] PC %s squashed.\n",
-                    tid, squashed_inst->seqNum, squashed_inst->pcState());
-            it = forwardFlowWakeupQueue.erase(it);
+    for (auto &queue: forwardFlowWakeupQueues) {
+        auto entry_it = queue.begin();
+        while (entry_it != queue.end()) {
+            DynInstPtr squashed_inst = entry_it->second.inst;
+            if (squashed_inst->seqNum > squashed_num
+                    && squashed_inst->threadNumber == tid) {
+                DPRINTF(IEW,"[tid:%i]: ForwardFlow wake up list Instruction"
+                        " [sn:%lli] PC %s squashed.\n",
+                        tid, squashed_inst->seqNum, squashed_inst->pcState());
+                entry_it = queue.erase(entry_it);
+            } else {
+                entry_it++;
+            }
         }
-        else
-            it++;
     }
 }
 
@@ -1428,50 +1433,84 @@ DefaultIEW<Impl>::executeInsts()
 }
 
 template <class Impl>
-int
+void
 DefaultIEW<Impl>::forwardFlowWakeup()
 {
-    int inst_num = 0;
-    for (; inst_num < wbWidth &&
-            inst_num < forwardFlowWakeupQueue.size();
-        ) {
-        ForwardFlowWakeupQueueEntry &entry = forwardFlowWakeupQueue[inst_num];
-        DynInstPtr inst = entry.inst;
-        bool is_first_wakeup = entry.isFirstWakeUp;
-        int crossBankLatency = entry.crossBankLatency;
-        if (crossBankLatency > 0) {
-            // if crossBankLatency > 0
-            // then we can not do wake up in this cycle
-            // wait for later cycles
-            entry.crossBankLatency--;
-            inst_num++;
+    int bank_index = 0;
+    for (auto &queue: forwardFlowWakeupQueues) {
+        if (instQueue.usedBankThisCycle[bank_index]) {
+            // this bank's read port has been used this cycle
+            // make this function f*(x) = f(x)
             continue;
-        } else
-            // if crossBankLatency = 0
-            // then we can do wake up in this cycle
-            // but remember to schedule next wakeup
-            entry.crossBankLatency = getCrossBankLatency();
+        }
+
+        auto entry_it = queue.begin();
+
+        // this is producer!
+        auto inst = entry_it->second.inst;
+        auto is_first_wakeup = entry_it->second.isFirstWakeUp;
+        auto nextTick = entry_it->first;
+        //or
+        //auto nextTick = entry_it->second.nextTick;
+
+        if (nextTick > curTick()) {
+            // map is supposed to be ordered
+            instQueue.usedBankThisCycle[bank_index] = true;
+            continue;
+        }
 
 
         DPRINTF(IEW, "ForwardFlow Wakeup, [sn:%lli] PC %s.\n",
                 inst->seqNum, inst->pcState());
 
-        bool remaining = writebackInst(inst, is_first_wakeup, true);
-        forwardFlowWakeupQueue[inst_num].isFirstWakeUp = false;
+        // remaining = if there is instructions not wakenup yet
+        bool remaining, valid_wakeup;
+        std::tie(valid_wakeup, remaining) =
+            wakeupOneDep(inst, is_first_wakeup);
+        if (valid_wakeup) {
+            instQueue.usedBankThisCycle[bank_index] = true;
+        }
+        // mark not first wake up
+        entry_it->second.isFirstWakeUp = false;
         // have waken up all dependents, exhausted the chain
-        if (!remaining)
-            forwardFlowWakeupQueue.erase(forwardFlowWakeupQueue.begin()
-                    + inst_num);
-        else
-            inst_num++;
+        if (!remaining) {
+            entry_it = queue.erase(entry_it);
+        } else {
+            // scheduler next instruction to wake up
+            auto next_dep_inst = instQueue.getNextDep(inst);
+
+            assert(next_dep_inst);
+            auto next_bg_id = next_dep_inst->BGID;
+            auto next_bank_id = next_dep_inst->bankID;
+
+            // If first wakeup, we assume that
+            // entry is insert to the bank of producer inst
+            auto curr_bg_id = getBGID(bank_index);
+            auto curr_bank_id = getBankID(bank_index);
+
+            auto cross_bank_group = curr_bg_id != next_bg_id;
+            auto cross_bank = curr_bank_id != next_bank_id;
+
+            auto need_migrate = cross_bank_group || cross_bank;
+            if (need_migrate) {
+                // cross bank group, delay for another 2 cycles
+                entry_it->second.nextWakeUp = cross_bank_group ?
+                    curTick() + 1000 : curTick() + 500;
+                if (cross_bank) {
+                    int next_bank = getBank(next_bg_id, next_bank_id);
+                    forwardFlowWakeupQueues[next_bank].insert(*entry_it);
+                    entry_it = queue.erase(entry_it);
+                }
+            }
+        }
+        bank_index++;
     }
-    return wbWidth - inst_num;
 }
 
 
 template <class Impl>
 void
-DefaultIEW<Impl>::writebackInsts(int remaining_wb_bandwidth)
+DefaultIEW<Impl>::writebackInsts()
 {
     // Loop through the head of the time buffer and wake any
     // dependents.  These instructions are about to write back.  Also
@@ -1491,38 +1530,57 @@ DefaultIEW<Impl>::writebackInsts(int remaining_wb_bandwidth)
 
         if (!inst->isSquashed() && inst->isExecuted()
                 && inst->getFault() == NoFault) {
+            //This is only CAM wakeup
             instQueue.wakeDependents(inst);
         }
     }
 
 
-    // forward flow wakeup
-    // share wake up ports with forward flow wake up queue
-    for (inst_num = 0; inst_num < remaining_wb_bandwidth &&
+    // This loop is only responsble for inserting not waking up
+    // all waking up is done in FF wakeup now
+    for (inst_num = 0; inst_num < wbWidth &&
             toCommit->insts[inst_num]; inst_num++) {
         DynInstPtr inst = toCommit->insts[inst_num];
-        writebackInst(inst, true, false);
-    }
 
-    // the number of write back ports is limited
-    // add these instructions to forward flow wake up queue
-    // and do write back in later cycles
-    for (; inst_num < wbWidth &&
-            toCommit->insts[inst_num]; inst_num++) {
-        DynInstPtr inst = toCommit->insts[inst_num];
+        auto curr_bg_id = inst->BGID;
+
+        auto next_dep_inst = instQueue.getNextDep(inst);
+        if (!next_dep_inst) {
+            inst_num--;
+            continue;
+        }
+        auto next_bg_id = next_dep_inst->BGID;
+        auto next_bank_id = next_dep_inst->bankID;
+
+        auto cross_bank_group = curr_bg_id != next_bg_id;
+
         ForwardFlowWakeupQueueEntry entry;
         entry.inst = inst;
         entry.isFirstWakeUp = true;
-        entry.crossBankLatency = getCrossBankLatency();
-        forwardFlowWakeupQueue.push_back(entry);
+
+        // if (need_migrate) {
+        // entry must not be in queue yet, so "need_migrate" must be true
+        // it means "need insert" in fact
+
+        // Similart to the second half of ff wakeup:
+        // scheduler future ready Tick
+        entry.nextWakeUp = cross_bank_group ?
+            curTick() + 500 : curTick();
+
+        auto next_bank = getBank(next_bg_id, next_bank_id);
+
+        // predecessor BG is no longer needed, because migration record it
+        // automatically
+        // entry.predecessorBG = inst->BGID;
+
+        forwardFlowWakeupQueues[next_bank].emplace(entry.nextWakeUp, entry);
     }
 }
 
 // instruction write back and wakeup
 template <class Impl>
-bool
-DefaultIEW<Impl>::writebackInst(DynInstPtr &inst,
-        bool isFirstWakeUp, bool fromForwardFlowWakeupQueue)
+std::tuple<bool, bool> // valid, remaining
+DefaultIEW<Impl>::wakeupOneDep(DynInstPtr &inst, bool isFirstWakeUp)
 {
     ThreadID tid = inst->threadNumber;
 
@@ -1542,19 +1600,22 @@ DefaultIEW<Impl>::writebackInst(DynInstPtr &inst,
     // are first sent to commit.  Instead commit must tell the LSQ
     // when it's ready to execute the strictly ordered load.
     bool remaining = false;
+    int dependents;
+    bool valid_wakeup = false;
+
+    // Note that inst is a producer
     if (!inst->isSquashed() && inst->isExecuted()
             && inst->getFault() == NoFault) {
-        int dependents = instQueue.wakeOneDependent(inst,
-                remaining, isFirstWakeUp);
-        if (remaining && !fromForwardFlowWakeupQueue) {
-            ForwardFlowWakeupQueueEntry entry;
-            entry.inst = inst;
-            entry.isFirstWakeUp = false;
-            entry.crossBankLatency = getCrossBankLatency();
-            forwardFlowWakeupQueue.push_back(entry);
-        }
+        valid_wakeup = true;
+
+        // ForwardFlowWakeupQueueEntry entry;
+        // We need not to add entry in this function any more!
+
+        std::tie(dependents, remaining) =
+            instQueue.wakeOneDependent(inst, isFirstWakeUp);
 
         if (isFirstWakeUp) {
+            // update scoreboard
             for (int i = 0; i < inst->numDestRegs(); i++) {
                 //mark as Ready
                 DPRINTF(IEW,"Setting Destination Register %i (%s)\n",
@@ -1562,9 +1623,11 @@ DefaultIEW<Impl>::writebackInst(DynInstPtr &inst,
                         inst->renamedDestRegIdx(i)->className());
                 scoreboard->setReg(inst->renamedDestRegIdx(i));
             }
+            // update stats
             writebackCount[tid]++;
         }
 
+        // update stats
         if (dependents) {
             if (isFirstWakeUp) {
                 producerInst[tid]++;
@@ -1572,7 +1635,7 @@ DefaultIEW<Impl>::writebackInst(DynInstPtr &inst,
             consumerInst[tid]+= dependents;
         }
     }
-    return remaining;
+    return std::make_tuple(valid_wakeup, remaining);
 }
 
 template<class Impl>
@@ -1592,6 +1655,7 @@ DefaultIEW<Impl>::tick()
 
     list<ThreadID>::iterator threads = activeThreads->begin();
     list<ThreadID>::iterator end = activeThreads->end();
+    instQueue.clear();
 
     // Check stall and squash signals, dispatch any instructions.
     while (threads != end) {
@@ -1606,9 +1670,9 @@ DefaultIEW<Impl>::tick()
     if (exeStatus != Squashing) {
         executeInsts();
 
-        int remaining_wb_bandwidth = forwardFlowWakeup();
+        writebackInsts();
 
-        writebackInsts(remaining_wb_bandwidth);
+        forwardFlowWakeup();
 
         // Have the instruction queue try to schedule any ready instructions.
         // (In actuality, this scheduling is for instructions that will
@@ -1767,5 +1831,4 @@ DefaultIEW<Impl>::checkMisprediction(DynInstPtr &inst)
         }
     }
 }
-
 #endif//__CPU_O3_IEW_IMPL_IMPL_HH__
