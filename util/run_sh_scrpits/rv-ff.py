@@ -10,16 +10,35 @@ from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
 import common as c
+import subprocess
 
-numIQ = 128
+# use hash
+# current_git_hash = subprocess.check_output(
+#         ['git', 'rev-parse', '--short', 'HEAD'])
+# use tag
+current_git_tag = subprocess.check_output(
+        ['git', 'describe']).strip().decode('utf8')
 
-outdir = \
-    '/ramdisk/zyy/gem5_run/results/RV-Ideal-ROB300-LQ100-SQ100/CAM-IQ-{}'.
-    format(numIQ)
+num_ROB = 300
+num_LQ  = 100
+num_SQ  = 100
+num_IQ  = 128
+
+outdir_1 = '/ramdisk/zyy/gem5_run/results/RV-Ideal-ROB{}-LQ{}-SQ{}/'.format(
+        num_ROB,
+        num_LQ,
+        num_SQ,
+        )
+outdir_2 = 'FF-{}-{}'.format(
+        current_git_tag,
+        num_IQ
+        )
+
+outdir = outdir_1 + outdir_2
 
 arch = 'RISCV'
 
-def rv_origin(benchmark, some_extra_args, outdir_b):
+def rv_ff(benchmark, some_extra_args, outdir_b):
 
     interval = 200*10**6
     warmup = 20*10**6
@@ -63,10 +82,10 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             '--l2cache',
             '--l2_size=4MB',
             '--l2_assoc=8',
-            '--num-ROB=300',
-            '--num-IQ={}'.format(numIQ),
-            '--num-LQ=100',
-            '--num-SQ=100',
+            '--num-ROB={}'.format(num_ROB),
+            '--num-IQ={}'.format(num_IQ),
+            '--num-LQ={}'.format(num_LQ),
+            '--num-SQ={}'.format(num_SQ),
             ]
     else:
         assert False
@@ -92,7 +111,7 @@ def run(benchmark):
 
     if prerequisite:
         print('cpt flag found, is going to run gem5 on', benchmark)
-        c.avoid_repeated(rv_origin, outdir_b,
+        c.avoid_repeated(rv_ff, outdir_b,
                 benchmark, some_extra_args, outdir_b)
     else:
         print('prerequisite not satisified, abort on', benchmark)

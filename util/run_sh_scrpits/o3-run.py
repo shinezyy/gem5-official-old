@@ -12,7 +12,7 @@ from multiprocessing import Pool
 import common as c
 
 
-outdir = uexp('~/gem5-results/micro-benchmarks/')
+outdir = uexp('/ramdisk/zyy/gem5_run/results/micro-bench')
 
 arch = 'RISCV'
 
@@ -24,6 +24,7 @@ def example_to_run_other_binary(cmd, some_extra_args, outdir_b):
     os.chdir(c.gem5_exec())
 
     options = [
+            # '--debug-flags=FF,O3CPUAll',
             '--outdir=' + outdir_b,
             pjoin(c.gem5_home(), 'configs/ss/se.py'),
             '-c',
@@ -92,8 +93,8 @@ def run(args):
 def main():
     num_thread = 1
 
-    cmds = [(pjoin(c.gem5_home(), 'tests/ss/large-fanout-rand-array'),
-        'rand-array')]
+    cmds = [('/ramdisk/zyy/gem5_run/micro-bench/large-fan-out-snippet/a.out',
+        'large-fanout')]
 
     if num_thread > 1:
         p = Pool(num_thread)
