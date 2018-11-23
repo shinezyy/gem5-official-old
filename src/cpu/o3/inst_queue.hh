@@ -227,11 +227,11 @@ class InstructionQueue
     void commit(const InstSeqNum &inst, ThreadID tid = 0);
 
     /** Wakes all dependents of a completed instruction. */
-    void wakeDependents(DynInstPtr &completed_inst);
+    void CAMWakeDependents(DynInstPtr &completed_inst);
 
     /** Wakes one dependent of a completed instruction. */
     std::tuple<int, bool> wakeOneDependent(
-            DynInstPtr &completed_inst, bool firstWakeUp);
+            DynInstPtr &completed_inst);
 
     /** Adds a ready memory instruction to the ready list. */
     void addReadyMemInst(DynInstPtr &ready_inst);
@@ -577,6 +577,10 @@ class InstructionQueue
     void clear();
 
     DynInstPtr getNextDep(DynInstPtr &inst);
+
+    void setScoreboard(PhysRegIndex reg);
+
+    void wakeupMem(DynInstPtr &);
 };
 
 #endif //__CPU_O3_INST_QUEUE_HH__

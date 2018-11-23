@@ -331,13 +331,7 @@ struct ForwardFlowWakeupQueueEntry {
     typedef typename Impl::DynInstPtr DynInstPtr;
 
     DynInstPtr inst;
-    bool isFirstWakeUp;
     Tick nextWakeUp;
-
-    ForwardFlowWakeupQueueEntry<Impl>()
-    {
-        isFirstWakeUp = false;
-    }
 };
 
 #endif //__CPU_O3_COMM_HH__

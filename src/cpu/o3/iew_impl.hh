@@ -599,7 +599,7 @@ template<class Impl>
 void
 DefaultIEW<Impl>::wakeDependents(DynInstPtr &inst)
 {
-    instQueue.wakeDependents(inst);
+    assert(false);
 }
 
 template<class Impl>
@@ -1442,6 +1442,7 @@ DefaultIEW<Impl>::forwardFlowWakeup()
         if (instQueue.usedBankThisCycle[bank_index]) {
             // this bank's read port has been used this cycle
             // make this function f*(x) = f(x)
+            DPRINTF(FF, "bank %d has been used this cylce\n", bank_index);
             continue;
         }
 
@@ -1452,16 +1453,18 @@ DefaultIEW<Impl>::forwardFlowWakeup()
             if (nextTick > curTick()) {
                 // until found a ready to schedule one
                 // instQueue.usedBankThisCycle[bank_index] =;
+                DPRINTF(FF, "Scheduled tick: %lli, curtick:%lli\n",
+                        nextTick, curTick());
+                DPRINTF(FF, "skipped because scheduled time not reached\n");
                 entry_it++;
                 continue;
             }
-
             // this is producer!
             auto inst = entry_it->inst;
-            auto is_first_wakeup = entry_it->isFirstWakeUp;
+            auto is_first_wakeup = inst->isFirstWakeUp;
 
-            DPRINTF(IEW, "ForwardFlow Wakeup, [sn:%lli] PC %s.\n",
-                    inst->seqNum, inst->pcState());
+            DPRINTF(IEW, "ForwardFlow Wakeup, [sn:%lli] first wake:%i.\n",
+                    inst->seqNum, inst->isFirstWakeUp);
 
             // remaining = if there is instructions not wakenup yet
             bool remaining, valid_wakeup;
@@ -1475,7 +1478,7 @@ DefaultIEW<Impl>::forwardFlowWakeup()
                 queue.erase(entry_it);
             } else {
                 // mark not first wake up
-                entry_it->isFirstWakeUp = false;
+                inst->isFirstWakeUp = false;
 
                 // scheduler next instruction to wake up
                 auto next_dep_inst = instQueue.getNextDep(inst);
@@ -1513,6 +1516,9 @@ DefaultIEW<Impl>::forwardFlowWakeup()
             // reaching here means this bank must have been used
             break;
         }
+        if (!instQueue.usedBankThisCycle[bank_index]) {
+            DPRINTF(FF, "No (ready) insts found in bank %i\n", bank_index);
+        }
         bank_index++;
     }
 }
@@ -1538,13 +1544,32 @@ DefaultIEW<Impl>::writebackInsts()
             toCommit->insts[inst_num]; inst_num++) {
         DynInstPtr inst = toCommit->insts[inst_num];
 
-        if (!inst->isSquashed() && inst->isExecuted()
-                && inst->getFault() == NoFault) {
-            //This is only CAM wakeup
-            instQueue.wakeDependents(inst);
+        if (inst->isFirstWakeUp) {
+            if (!inst->isSquashed() && inst->isExecuted()
+                    && inst->getFault() == NoFault) {
+                //This is only CAM wakeup
+                instQueue.CAMWakeDependents(inst);
+                instQueue.wakeupMem(inst);
+            }
+
+            // update scoreboard
+            for (int i = 0; i < inst->numDestRegs(); i++) {
+                //mark as Ready
+                DPRINTF(IEW,
+                        "Inst [sn:%lli] setting Destination"
+                        " Register %i (%s[%i]) on scoreboard\n",
+                        inst->seqNum,
+                        inst->renamedDestRegIdx(i)->flatIndex(),
+                        inst->renamedDestRegIdx(i)->className(),
+                        inst->renamedDestRegIdx(i)->index());
+                scoreboard->setReg(inst->renamedDestRegIdx(i));
+
+                // who knows why there are 2 SBs in gem5?
+                instQueue.setScoreboard(
+                        inst->renamedDestRegIdx(i)->flatIndex());
+            }
         }
     }
-
 
     // This loop is only responsble for inserting not waking up
     // all waking up is done in FF wakeup now
@@ -1557,6 +1582,8 @@ DefaultIEW<Impl>::writebackInsts()
 
         auto next_dep_inst = instQueue.getNextDep(inst);
         if (!next_dep_inst) {
+            DPRINTF(FF, "No dependents of inst [sn:%lli] found! skip\n",
+                    inst->seqNum);
             continue;
         }
         wb_used++;
@@ -1569,7 +1596,6 @@ DefaultIEW<Impl>::writebackInsts()
 
         ForwardFlowWakeupQueueEntry entry;
         entry.inst = inst;
-        entry.isFirstWakeUp = true;
 
         // if (need_migrate) {
         // entry must not be in queue yet, so "need_migrate" must be true
@@ -1586,6 +1612,9 @@ DefaultIEW<Impl>::writebackInsts()
         // automatically
         // entry.predecessorBG = inst->BGID;
         assert(entry.inst);
+
+        DPRINTF(FF, "Inserting produer [sn:%lli] into FFQ, "
+                "Scheduled @ Tick %lli\n", inst->seqNum, entry.nextWakeUp);
         forwardFlowWakeupQueues[next_bank].push_back(entry);
     }
 }
@@ -1600,7 +1629,6 @@ DefaultIEW<Impl>::wakeupOneDep(DynInstPtr &inst, bool isFirstWakeUp)
     if (isFirstWakeUp) {
         DPRINTF(IEW, "Sending instructions to commit, [sn:%lli] PC %s.\n",
                 inst->seqNum, inst->pcState());
-
         iewInstsToCommit[tid]++;
         // Notify potential listeners that execution is complete for this
         // instruction.
@@ -1625,17 +1653,10 @@ DefaultIEW<Impl>::wakeupOneDep(DynInstPtr &inst, bool isFirstWakeUp)
         // We need not to add entry in this function any more!
 
         std::tie(dependents, remaining) =
-            instQueue.wakeOneDependent(inst, isFirstWakeUp);
+            instQueue.wakeOneDependent(inst);
 
         if (isFirstWakeUp) {
-            // update scoreboard
-            for (int i = 0; i < inst->numDestRegs(); i++) {
-                //mark as Ready
-                DPRINTF(IEW,"Setting Destination Register %i (%s)\n",
-                        inst->renamedDestRegIdx(i)->index(),
-                        inst->renamedDestRegIdx(i)->className());
-                scoreboard->setReg(inst->renamedDestRegIdx(i));
-            }
+
             // update stats
             writebackCount[tid]++;
         }

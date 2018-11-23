@@ -432,6 +432,8 @@ class BaseO3DynInst : public BaseDynInst<Impl>
     uint32_t BGID{};
 
     uint32_t bankID{};
+
+    bool isFirstWakeUp;
 };
 
 #endif // __CPU_O3_ALPHA_DYN_INST_HH__

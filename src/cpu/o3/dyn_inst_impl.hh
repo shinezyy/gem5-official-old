@@ -124,6 +124,7 @@ BaseO3DynInst<Impl>::initVars()
 #endif
     BGID = ~0;
     bankID = ~0;
+    isFirstWakeUp = true;
 }
 
 template <class Impl>

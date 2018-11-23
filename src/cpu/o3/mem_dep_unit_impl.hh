@@ -47,6 +47,7 @@
 
 #include "cpu/o3/inst_queue.hh"
 #include "cpu/o3/mem_dep_unit.hh"
+#include "debug/FF.hh"
 #include "debug/MemDepUnit.hh"
 #include "params/DerivO3CPU.hh"
 
@@ -180,6 +181,7 @@ MemDepUnit<MemDepPred, Impl>::insert(DynInstPtr &inst)
     // Add the MemDepEntry to the hash.
     memDepHash.insert(
         std::pair<InstSeqNum, MemDepEntryPtr>(inst->seqNum, inst_entry));
+    DPRINTF(FF, "Insert inst [sn:%lli]\n", inst->seqNum);
 #ifdef DEBUG
     MemDepEntry::memdep_insert++;
 #endif
@@ -406,7 +408,7 @@ template <class MemDepPred, class Impl>
 void
 MemDepUnit<MemDepPred, Impl>::completed(DynInstPtr &inst)
 {
-    DPRINTF(MemDepUnit, "Completed mem instruction PC %s [sn:%lli].\n",
+    DPRINTF(MemDepUnit, "Completing mem instruction PC %s [sn:%lli].\n",
             inst->pcState(), inst->seqNum);
 
     ThreadID tid = inst->threadNumber;
@@ -424,6 +426,8 @@ MemDepUnit<MemDepPred, Impl>::completed(DynInstPtr &inst)
 #ifdef DEBUG
     MemDepEntry::memdep_erase++;
 #endif
+    DPRINTF(MemDepUnit, "Completed mem instruction [sn:%lli].\n",
+            inst->seqNum);
 }
 
 template <class MemDepPred, class Impl>
@@ -562,6 +566,10 @@ MemDepUnit<MemDepPred, Impl>::findInHash(const DynInstPtr &inst)
 {
     MemDepHashIt hash_it = memDepHash.find(inst->seqNum);
 
+    if (hash_it == memDepHash.end()) {
+        dumpLists();
+    }
+
     assert(hash_it != memDepHash.end());
 
     return (*hash_it).second;
@@ -602,6 +610,11 @@ MemDepUnit<MemDepPred, Impl>::dumpLists()
             inst_list_it++;
             ++num;
         }
+    }
+
+    DPRINTF(FF, "To dump hash table\n");
+    for (auto hash_entry: memDepHash) {
+        DPRINTF(FF, "key: %lli\n", hash_entry.first);
     }
 
     cprintf("Memory dependence hash size: %i\n", memDepHash.size());

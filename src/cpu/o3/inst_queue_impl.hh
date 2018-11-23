@@ -1008,9 +1008,10 @@ InstructionQueue<Impl>::commit(const InstSeqNum &inst, ThreadID tid)
 // just mark that it should be waken up, if it's a cam scheduler
 template <class Impl>
 void
-InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
+InstructionQueue<Impl>::CAMWakeDependents(DynInstPtr &completed_inst)
 {
-    DPRINTF(IQ, "CAM: Waking dependents of completed instruction.\n");
+    DPRINTF(IQ, "CAM: Waking dependents of completed inst [sn:%lli].\n",
+            completed_inst->seqNum);
 
     assert(!completed_inst->isSquashed());
 
@@ -1039,9 +1040,41 @@ InstructionQueue<Impl>::wakeDependents(DynInstPtr &completed_inst)
 }
 
 template <class Impl>
+void
+InstructionQueue<Impl>::wakeupMem(DynInstPtr &completed_inst)
+{
+    assert(!completed_inst->isSquashed());
+
+    // Tell the memory dependence unit to wake any dependents on this
+    // instruction if it is a memory instruction.  Also complete the memory
+    // instruction at this point since we know it executed without issues.
+    // @todo: Might want to rename "completeMemInst" to something that
+    // indicates that it won't need to be replayed, and call this
+    // earlier.  Might not be a big deal.
+    if (completed_inst->isMemRef()) {
+
+        DPRINTF(FF, "The first time to wakeup mem inst[sn:%lli]\n",
+                    completed_inst->seqNum);
+        memDepUnit[completed_inst->threadNumber].wakeDependents(
+                completed_inst);
+        completeMemInst(completed_inst);
+
+    } else if (completed_inst->isMemBarrier() ||
+            completed_inst->isWriteBarrier()) {
+
+        DPRINTF(FF, "The first time to wakeup mem barr inst[sn:%lli]\n",
+                completed_inst->seqNum);
+        memDepUnit[completed_inst->threadNumber].completeBarrier(
+                completed_inst);
+    } else {
+        return;
+    }
+    DPRINTF(IQ, "Waked up dependents of completed instruction.\n");
+}
+
+template <class Impl>
 std::tuple<int, bool>
-InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
-        bool firstWakeUp)
+InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst)
 {
     DPRINTF(IQ, "Waking dependents of completed instruction.\n");
 
@@ -1058,24 +1091,6 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
 
 
     assert(!completed_inst->isSquashed());
-
-    // Tell the memory dependence unit to wake any dependents on this
-    // instruction if it is a memory instruction.  Also complete the memory
-    // instruction at this point since we know it executed without issues.
-    // @todo: Might want to rename "completeMemInst" to something that
-    // indicates that it won't need to be replayed, and call this
-    // earlier.  Might not be a big deal.
-    if (firstWakeUp) {
-        if (completed_inst->isMemRef()) {
-            memDepUnit[completed_inst->threadNumber].wakeDependents(
-                    completed_inst);
-            completeMemInst(completed_inst);
-        } else if (completed_inst->isMemBarrier() ||
-                completed_inst->isWriteBarrier()) {
-            memDepUnit[completed_inst->threadNumber].completeBarrier(
-                    completed_inst);
-        }
-    }
 
     for (int dest_reg_idx = 0;
             dest_reg_idx < completed_inst->numDestRegs();
@@ -1095,10 +1110,6 @@ InstructionQueue<Impl>::wakeOneDependent(DynInstPtr &completed_inst,
         DPRINTF(IQ, "Waking one dependent on register %i (%s).\n",
                 dest_reg->index(),
                 dest_reg->className());
-
-        if (firstWakeUp) {
-            dependGraph.camWakeupSrcReg(dest_reg->flatIndex());
-        }
 
         //Go through the dependency chain, marking the registers as
         //ready within the waiting instructions.
@@ -1442,10 +1453,11 @@ InstructionQueue<Impl>::addToDependents(DynInstPtr &new_inst)
             if (src_reg->isFixedMapping()) {
                 continue;
             } else if (!regScoreboard[src_reg->flatIndex()]) {
-                DPRINTF(IQ, "Instruction PC %s has src reg %i (%s) that "
+                DPRINTF(IQ, "Instruction [sn:%lli] PC %s"
+                        " has src reg %i that "
                         "is being added to the dependency chain.\n",
-                        new_inst->pcState(), src_reg->index(),
-                        src_reg->className());
+                        new_inst->seqNum, new_inst->pcState(),
+                        src_reg->flatIndex());
 
                 dependGraph.insert(src_reg->flatIndex(), new_inst);
 
@@ -1453,10 +1465,11 @@ InstructionQueue<Impl>::addToDependents(DynInstPtr &new_inst)
                 // was added to the dependency graph.
                 return_val = true;
             } else {
-                DPRINTF(IQ, "Instruction PC %s has src reg %i (%s) that "
+                DPRINTF(IQ, "Instruction [sn:%lli]"
+                        " PC %s has src reg %i that "
                         "became ready before it reached the IQ.\n",
-                        new_inst->pcState(), src_reg->index(),
-                        src_reg->className());
+                        new_inst->seqNum, new_inst->pcState(),
+                        src_reg->flatIndex());
                 // Mark a register ready within the instruction.
                 new_inst->markSrcRegReady(src_reg_idx);
                 new_inst->markCAMSrcRegReady(src_reg_idx);
@@ -1503,6 +1516,9 @@ InstructionQueue<Impl>::addToProducers(DynInstPtr &new_inst)
                   dest_reg->index(), dest_reg->className(),
                   dest_reg->flatIndex());
         }
+
+        DPRINTF(IQ, "Inst [sn:%lli] defines reg %i\n",
+                new_inst->seqNum, dest_reg->flatIndex());
 
         dependGraph.setInst(dest_reg->flatIndex(), new_inst);
 
@@ -1777,6 +1793,13 @@ InstructionQueue<Impl>::getNextDep(DynInstPtr &inst)
         }
     }
     return nullptr;
+}
+
+template <class Impl>
+void
+InstructionQueue<Impl>::setScoreboard(PhysRegIndex reg)
+{
+    regScoreboard[reg] = true;
 }
 
 #endif//__CPU_O3_INST_QUEUE_IMPL_HH__
