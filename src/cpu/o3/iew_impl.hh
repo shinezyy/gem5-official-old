@@ -457,7 +457,7 @@ DefaultIEW<Impl>::squashForwardFlow(
     for (auto &queue: forwardFlowWakeupQueues) {
         auto entry_it = queue.begin();
         while (entry_it != queue.end()) {
-            DynInstPtr squashed_inst = entry_it->second.inst;
+            DynInstPtr squashed_inst = entry_it->inst;
             if (squashed_inst->seqNum > squashed_num
                     && squashed_inst->threadNumber == tid) {
                 DPRINTF(IEW,"[tid:%i]: ForwardFlow wake up list Instruction"
@@ -1446,73 +1446,72 @@ DefaultIEW<Impl>::forwardFlowWakeup()
         }
 
         auto entry_it = queue.begin();
+        while (entry_it != queue.end()) {
 
-        if (entry_it == queue.end()) {
-            // No Task in this bank
-            continue;
-        }
+            auto nextTick = entry_it->nextWakeUp;
+            if (nextTick > curTick()) {
+                // until found a ready to schedule one
+                // instQueue.usedBankThisCycle[bank_index] =;
+                entry_it++;
+                continue;
+            }
 
-        // this is producer!
-        auto inst = entry_it->second.inst;
-        auto is_first_wakeup = entry_it->second.isFirstWakeUp;
-        auto nextTick = entry_it->first;
-        //or
-        //auto nextTick = entry_it->second.nextTick;
+            // this is producer!
+            auto inst = entry_it->inst;
+            auto is_first_wakeup = entry_it->isFirstWakeUp;
 
-        if (nextTick > curTick()) {
-            // map is supposed to be ordered
-            instQueue.usedBankThisCycle[bank_index] = true;
-            continue;
-        }
+            DPRINTF(IEW, "ForwardFlow Wakeup, [sn:%lli] PC %s.\n",
+                    inst->seqNum, inst->pcState());
 
+            // remaining = if there is instructions not wakenup yet
+            bool remaining, valid_wakeup;
+            std::tie(valid_wakeup, remaining) =
+                wakeupOneDep(inst, is_first_wakeup);
+            if (valid_wakeup) {
+                instQueue.usedBankThisCycle[bank_index] = true;
+            }
+            // have waken up all dependents, exhausted the chain
+            if (!remaining) {
+                queue.erase(entry_it);
+            } else {
+                // mark not first wake up
+                entry_it->isFirstWakeUp = false;
 
-        DPRINTF(IEW, "ForwardFlow Wakeup, [sn:%lli] PC %s.\n",
-                inst->seqNum, inst->pcState());
+                // scheduler next instruction to wake up
+                auto next_dep_inst = instQueue.getNextDep(inst);
 
-        // remaining = if there is instructions not wakenup yet
-        bool remaining, valid_wakeup;
-        std::tie(valid_wakeup, remaining) =
-            wakeupOneDep(inst, is_first_wakeup);
-        if (valid_wakeup) {
-            instQueue.usedBankThisCycle[bank_index] = true;
-        }
-        // mark not first wake up
-        entry_it->second.isFirstWakeUp = false;
-        // have waken up all dependents, exhausted the chain
-        if (!remaining) {
-            queue.erase(entry_it);
-        } else {
-            // scheduler next instruction to wake up
-            auto next_dep_inst = instQueue.getNextDep(inst);
+                assert(next_dep_inst);
+                auto next_bg_id = next_dep_inst->BGID;
+                auto next_bank_id = next_dep_inst->bankID;
+                assert(next_bg_id != ~0);
+                assert(next_bg_id != ~0);
 
-            assert(next_dep_inst);
-            auto next_bg_id = next_dep_inst->BGID;
-            auto next_bank_id = next_dep_inst->bankID;
-            assert(next_bg_id != ~0);
-            assert(next_bg_id != ~0);
+                // If first wakeup, we assume that
+                // entry is insert to the bank of producer inst
+                auto curr_bg_id = getBGID(bank_index);
+                auto curr_bank_id = getBankID(bank_index);
+                assert(curr_bg_id != ~0);
+                assert(curr_bank_id != ~0);
 
-            // If first wakeup, we assume that
-            // entry is insert to the bank of producer inst
-            auto curr_bg_id = getBGID(bank_index);
-            auto curr_bank_id = getBankID(bank_index);
-            assert(curr_bg_id != ~0);
-            assert(curr_bank_id != ~0);
+                auto cross_bank_group = curr_bg_id != next_bg_id;
+                auto cross_bank = curr_bank_id != next_bank_id;
 
-            auto cross_bank_group = curr_bg_id != next_bg_id;
-            auto cross_bank = curr_bank_id != next_bank_id;
-
-            auto need_migrate = cross_bank_group || cross_bank;
-            if (need_migrate) {
-                // cross bank group, delay for another 2 cycles
-                entry_it->second.nextWakeUp = cross_bank_group ?
-                    curTick() + 1000 : curTick() + 500;
-                if (cross_bank) {
-                    int next_bank = getBank(next_bg_id, next_bank_id);
-                    assert(entry_it->second.inst);
-                    forwardFlowWakeupQueues[next_bank].insert(*entry_it);
-                    queue.erase(entry_it);
+                auto need_migrate = cross_bank_group || cross_bank;
+                if (need_migrate) {
+                    // cross bank group, delay for another 2 cycles
+                    entry_it->nextWakeUp = cross_bank_group ?
+                        curTick() + 1000 : curTick() + 500;
+                    if (cross_bank) {
+                        int next_bank = getBank(next_bg_id, next_bank_id);
+                        assert(entry_it->inst);
+                        forwardFlowWakeupQueues[next_bank].push_back(
+                                *entry_it);
+                        queue.erase(entry_it);
+                    }
                 }
             }
+            // reaching here means this bank must have been used
+            break;
         }
         bank_index++;
     }
@@ -1587,7 +1586,7 @@ DefaultIEW<Impl>::writebackInsts()
         // automatically
         // entry.predecessorBG = inst->BGID;
         assert(entry.inst);
-        forwardFlowWakeupQueues[next_bank].emplace(entry.nextWakeUp, entry);
+        forwardFlowWakeupQueues[next_bank].push_back(entry);
     }
 }
 

@@ -339,7 +339,7 @@ class DefaultIEW
     /** Wire to write infromation heading to commit. */
     typename TimeBuffer<IEWStruct>::wire toCommit;
 
-    std::array<std::map<Tick, ForwardFlowWakeupQueueEntry>, 8>
+    std::array<std::list<ForwardFlowWakeupQueueEntry>, 8>
         forwardFlowWakeupQueues;
 
     uint32_t getBankID(int bank) {
