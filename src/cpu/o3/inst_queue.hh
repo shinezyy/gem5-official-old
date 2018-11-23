@@ -560,8 +560,10 @@ class InstructionQueue
   private:
 
     uint32_t BankSize;
-    static const uint32_t BGSize = 4;
-    static const uint32_t numBGs = 2;
+    enum {
+        numBGs = 2,
+        BGSize = 4
+    };
 
     uint32_t inst_circular_counter{};
     uint32_t curBG{};

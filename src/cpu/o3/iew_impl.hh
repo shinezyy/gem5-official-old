@@ -59,6 +59,7 @@
 #include "cpu/timebuf.hh"
 #include "debug/Activity.hh"
 #include "debug/Drain.hh"
+#include "debug/FF.hh"
 #include "debug/IEW.hh"
 #include "debug/O3PipeView.hh"
 #include "params/DerivO3CPU.hh"
@@ -986,7 +987,6 @@ DefaultIEW<Impl>::dispatchInsts(ThreadID tid)
         skidBuffer[tid] : insts[tid];
 
     int insts_to_add = insts_to_dispatch.size();
-
     DynInstPtr inst;
     bool add_to_iq = false;
     int dis_num_inst = 0;
@@ -1438,6 +1438,7 @@ DefaultIEW<Impl>::forwardFlowWakeup()
 {
     int bank_index = 0;
     for (auto &queue: forwardFlowWakeupQueues) {
+        DPRINTF(FF, "bankindex %d\n", bank_index);
         if (instQueue.usedBankThisCycle[bank_index]) {
             // this bank's read port has been used this cycle
             // make this function f*(x) = f(x)
@@ -1445,6 +1446,11 @@ DefaultIEW<Impl>::forwardFlowWakeup()
         }
 
         auto entry_it = queue.begin();
+
+        if (entry_it == queue.end()) {
+            // No Task in this bank
+            continue;
+        }
 
         // this is producer!
         auto inst = entry_it->second.inst;
@@ -1474,7 +1480,7 @@ DefaultIEW<Impl>::forwardFlowWakeup()
         entry_it->second.isFirstWakeUp = false;
         // have waken up all dependents, exhausted the chain
         if (!remaining) {
-            entry_it = queue.erase(entry_it);
+            queue.erase(entry_it);
         } else {
             // scheduler next instruction to wake up
             auto next_dep_inst = instQueue.getNextDep(inst);
@@ -1482,11 +1488,15 @@ DefaultIEW<Impl>::forwardFlowWakeup()
             assert(next_dep_inst);
             auto next_bg_id = next_dep_inst->BGID;
             auto next_bank_id = next_dep_inst->bankID;
+            assert(next_bg_id != ~0);
+            assert(next_bg_id != ~0);
 
             // If first wakeup, we assume that
             // entry is insert to the bank of producer inst
             auto curr_bg_id = getBGID(bank_index);
             auto curr_bank_id = getBankID(bank_index);
+            assert(curr_bg_id != ~0);
+            assert(curr_bank_id != ~0);
 
             auto cross_bank_group = curr_bg_id != next_bg_id;
             auto cross_bank = curr_bank_id != next_bank_id;
@@ -1498,8 +1508,9 @@ DefaultIEW<Impl>::forwardFlowWakeup()
                     curTick() + 1000 : curTick() + 500;
                 if (cross_bank) {
                     int next_bank = getBank(next_bg_id, next_bank_id);
+                    assert(entry_it->second.inst);
                     forwardFlowWakeupQueues[next_bank].insert(*entry_it);
-                    entry_it = queue.erase(entry_it);
+                    queue.erase(entry_it);
                 }
             }
         }
@@ -1538,7 +1549,8 @@ DefaultIEW<Impl>::writebackInsts()
 
     // This loop is only responsble for inserting not waking up
     // all waking up is done in FF wakeup now
-    for (inst_num = 0; inst_num < wbWidth &&
+    unsigned wb_used = 0;
+    for (inst_num = 0; wb_used < wbWidth &&
             toCommit->insts[inst_num]; inst_num++) {
         DynInstPtr inst = toCommit->insts[inst_num];
 
@@ -1546,11 +1558,13 @@ DefaultIEW<Impl>::writebackInsts()
 
         auto next_dep_inst = instQueue.getNextDep(inst);
         if (!next_dep_inst) {
-            inst_num--;
             continue;
         }
+        wb_used++;
         auto next_bg_id = next_dep_inst->BGID;
         auto next_bank_id = next_dep_inst->bankID;
+        assert(next_bg_id != ~0);
+        assert(next_bg_id != ~0);
 
         auto cross_bank_group = curr_bg_id != next_bg_id;
 
@@ -1572,7 +1586,7 @@ DefaultIEW<Impl>::writebackInsts()
         // predecessor BG is no longer needed, because migration record it
         // automatically
         // entry.predecessorBG = inst->BGID;
-
+        assert(entry.inst);
         forwardFlowWakeupQueues[next_bank].emplace(entry.nextWakeUp, entry);
     }
 }
