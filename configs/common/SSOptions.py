@@ -24,3 +24,9 @@ def addO3Options(parser):
             default=9,
             action='store', type='int',
             help="num SQ entries")
+
+    parser.add_option("--num-PhysReg",
+            default=9,
+            action='store', type='int',
+            help="num physical registers")
+

@@ -8,3 +8,8 @@ def modifyO3CPUConfig(options, cpu):
         cpu.LQEntries = options.num_LQ
     if options.num_SQ:
         cpu.SQEntries = options.num_SQ
+    if options.num_PhysReg:
+        cpu.numPhysIntRegs = options.num_PhysReg
+        cpu.numPhysFloatRegs = options.num_PhysReg
+        cpu.numPhysVecRegs = options.num_PhysReg
+        cpu.numPhysCCRegs = 0
