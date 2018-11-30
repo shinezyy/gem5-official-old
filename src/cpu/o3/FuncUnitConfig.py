@@ -45,7 +45,7 @@ from FuncUnit import *
 
 class IntALU(FUDesc):
     opList = [ OpDesc(opClass='IntAlu') ]
-    count = 4
+    count = 6
 
 class IntMultDiv(FUDesc):
     opList = [ OpDesc(opClass='IntMult', opLat=3),
@@ -64,7 +64,7 @@ class FP_ALU(FUDesc):
     opList = [ OpDesc(opClass='FloatAdd', opLat=2),
                OpDesc(opClass='FloatCmp', opLat=2),
                OpDesc(opClass='FloatCvt', opLat=2) ]
-    count = 2
+    count = 4
 
 class FP_MultDiv(FUDesc):
     opList = [ OpDesc(opClass='FloatMult', opLat=4),
@@ -95,22 +95,22 @@ class SIMD_Unit(FUDesc):
                OpDesc(opClass='SimdFloatMult'),
                OpDesc(opClass='SimdFloatMultAcc'),
                OpDesc(opClass='SimdFloatSqrt') ]
-    count = 2
+    count = 4
 
 class ReadPort(FUDesc):
     opList = [ OpDesc(opClass='MemRead'),
                OpDesc(opClass='FloatMemRead') ]
-    count = 2
+    count = 0
 
 class WritePort(FUDesc):
     opList = [ OpDesc(opClass='MemWrite'),
                OpDesc(opClass='FloatMemWrite') ]
-    count = 1
+    count = 0
 
 class RdWrPort(FUDesc):
     opList = [ OpDesc(opClass='MemRead'), OpDesc(opClass='MemWrite'),
                OpDesc(opClass='FloatMemRead'), OpDesc(opClass='FloatMemWrite')]
-    count = 0
+    count = 4
 
 class IprPort(FUDesc):
     opList = [ OpDesc(opClass='IprAccess', opLat = 3, pipelined = False) ]
