@@ -54,6 +54,7 @@
 #include "arch/isa_traits.hh"
 #include "arch/locked_mem.hh"
 #include "arch/mmapped_ipr.hh"
+#include "arch/riscv/faults.hh"
 #include "config/the_isa.hh"
 #include "cpu/inst_seq.hh"
 #include "cpu/timebuf.hh"
@@ -588,7 +589,14 @@ LSQUnit<Impl>::read(const RequestPtr &req,
             sreqLow ? " split" : "");
 
     if (req->isLLSC()) {
+#if THE_ISA == RISCV_ISA
+        if (sreqLow) {
+            return std::make_shared<RiscvISA::AddressFault>(
+                    req->getPaddr(), RiscvISA::AMO_ADDR_MISALIGNED);
+        }
+#else
         assert(!sreqLow);
+#endif
         // Disable recording the result temporarily.  Writing to misc
         // regs normally updates the result, but this is not the
         // desired behavior when handling store conditionals.
