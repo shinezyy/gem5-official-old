@@ -59,6 +59,6 @@ def gem5_exec():
 def gem5_cpt_dir(arch):
     cpt_dirs = {
             'ARM': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-arm-gcc-4.8',
-            'RISCV': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-riscv-gcc-8.2',
+            'RISCV': '/home/share/spec-simpoint-cpt-riscv-gcc-8.2',
             }
     return cpt_dirs[arch]

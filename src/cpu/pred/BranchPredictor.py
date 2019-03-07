@@ -61,6 +61,29 @@ class LocalBP(BranchPredictor):
     localPredictorSize = Param.Unsigned(2048, "Size of local predictor")
     localCtrBits = Param.Unsigned(2, "Bits per counter")
 
+class PerceptronLocalBP(BranchPredictor):
+    type = 'PerceptronLocalBP'
+    cxx_class = 'PerceptronLocalBP'
+    cxx_header = "cpu/pred/perceptron_local.hh"
+
+    localPredictorSize = Param.Unsigned(2048, "Size of local predictor")
+    localPercepSize = Param.Unsigned(64, "Bits per counter")
+
+class Perceptron(BranchPredictor):
+    type = 'Perceptron'
+    cxx_class = 'Perceptron'
+    cxx_header = "cpu/pred/perceptron.hh"
+
+    globalPredictorSize = Param.Unsigned(8192, "Size of global Perdictor")
+    numberOfPerceptrons = Param.Unsigned(20, "Number of Perceptrons")
+
+class PathPerceptron(BranchPredictor):
+    type = 'PathPerceptron'
+    cxx_class = 'PathPerceptron'
+    cxx_header = "cpu/pred/pathperceptron.hh"
+
+    globalPredictorSize = Param.Unsigned(8192, "Size of global Perdictor")
+    numberOfPerceptrons = Param.Unsigned(128, "Number of Perceptrons")
 
 class TournamentBP(BranchPredictor):
     type = 'TournamentBP'
