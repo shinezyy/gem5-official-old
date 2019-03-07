@@ -13,9 +13,26 @@ import common as c
 
 numIQ = 128
 
+bp_types = ['LTAGE',\
+            'TournamentBP',\
+            'PerceptronLocal',\
+            'Perceptron',\
+            'PathPerceptron',\
+            'LocalBP']
+
+bp_params = ['',\
+             '_size_16',\
+             '_size_20',\
+             '_size_32',\
+             '_size_64',\
+             '_size_128']
+
+bp_type = bp_types[3]
+
+bp_param = bp_params[2]
+
 outdir = \
-    '/ramdisk/zyy/gem5_run/results/RV-Ideal-ROB300-LQ100-SQ100/CAM-IQ-{}'.
-    format(numIQ)
+        '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param
 
 arch = 'RISCV'
 
@@ -28,6 +45,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
 
     options = [
             '--outdir=' + outdir_b,
+            '--debug-flags=PErceptron',
             pjoin(c.gem5_home(), 'configs/spec2006/se_spec06.py'),
             '--spec-2006-bench',
             '-b', '{}'.format(benchmark),
@@ -49,6 +67,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
                 ]
     elif cpu_model == 'OoO':
         options += [
+            #'--debug-flags=Fetch',
             '--cpu-type=DerivO3CPU',
             '--mem-type=DDR3_1600_8x8',
 
@@ -67,9 +86,12 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             '--num-IQ={}'.format(numIQ),
             '--num-LQ=100',
             '--num-SQ=100',
+            '--num-PhysReg=256',
             ]
     else:
         assert False
+
+    print(options)
     print(options)
     gem5 = sh.Command(pjoin(c.gem5_build(arch), 'gem5.opt'))
     # sys.exit(0)
@@ -99,7 +121,7 @@ def run(benchmark):
 
 
 def main():
-    num_thread = 22
+    num_thread = 4
 
     benchmarks = []
 

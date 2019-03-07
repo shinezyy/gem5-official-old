@@ -25,6 +25,7 @@ def example_to_run_other_binary(cmd, some_extra_args, outdir_b):
 
     options = [
             '--outdir=' + outdir_b,
+            '--debug-flag=PErceptron',
             pjoin(c.gem5_home(), 'configs/ss/se.py'),
             '-c',
             '{}'.format(cmd),
@@ -40,6 +41,7 @@ def example_to_run_other_binary(cmd, some_extra_args, outdir_b):
                 ]
     elif cpu_model == 'OoO':
         options += [
+            #'--debug-flag=Fetch',
             '--cpu-type=DerivO3CPU',
             '--mem-type=DDR3_1600_8x8',
 
