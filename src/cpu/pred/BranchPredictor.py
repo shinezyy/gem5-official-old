@@ -74,8 +74,16 @@ class Perceptron(BranchPredictor):
     cxx_class = 'Perceptron'
     cxx_header = "cpu/pred/perceptron.hh"
 
+    globalPredictorSize = Param.Unsigned(64, "Size of global Perdictor")
+    numberOfPerceptrons = Param.Unsigned(8192, "Number of Perceptrons")
+
+class MyPerceptron(BranchPredictor):
+    type = 'MyPerceptron'
+    cxx_class = 'MyPerceptron'
+    cxx_header = "cpu/pred/myperceptron.hh"
+
     globalPredictorSize = Param.Unsigned(8192, "Size of global Perdictor")
-    numberOfPerceptrons = Param.Unsigned(20, "Number of Perceptrons")
+    sizeOfPerceptrons   = Param.Unsigned(64, "Size of each Perceptron")
 
 class PathPerceptron(BranchPredictor):
     type = 'PathPerceptron'

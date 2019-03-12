@@ -18,7 +18,8 @@ bp_types = ['LTAGE',\
             'PerceptronLocal',\
             'Perceptron',\
             'PathPerceptron',\
-            'LocalBP']
+            'LocalBP',\
+            'MyPerceptron']
 
 bp_params = ['',\
              '_size_16',\
@@ -27,12 +28,16 @@ bp_params = ['',\
              '_size_64',\
              '_size_128']
 
-bp_type = bp_types[3]
+alternative = ['', '_alt', '_debug', 'aliasing']
 
-bp_param = bp_params[2]
+bp_type = bp_types[6]
+
+bp_param = bp_params[4]
+
+alt = alternative[3]
 
 outdir = \
-        '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param
+        '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param + alt
 
 arch = 'RISCV'
 
@@ -45,7 +50,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
 
     options = [
             '--outdir=' + outdir_b,
-            '--debug-flags=PErceptron',
+            '--debug-flags=MYperceptron',
             pjoin(c.gem5_home(), 'configs/spec2006/se_spec06.py'),
             '--spec-2006-bench',
             '-b', '{}'.format(benchmark),
