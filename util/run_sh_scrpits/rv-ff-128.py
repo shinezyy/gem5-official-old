@@ -9,27 +9,27 @@ import time
 from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
-import common as c
 import subprocess
+import common as c
 
-# use hash
-# current_git_hash = subprocess.check_output(
-#         ['git', 'rev-parse', '--short', 'HEAD'])
-# use tag
+
 current_git_tag = subprocess.check_output(
         ['git', 'describe']).strip().decode('utf8')
 
 num_ROB = 300
+num_IQ  = 128
 num_LQ  = 100
 num_SQ  = 100
-num_IQ  = 128
+num_PhysReg  = 256
 
-outdir_1 = '/ramdisk/zyy/gem5_run/results/RV-Ideal-ROB{}-LQ{}-SQ{}/'.format(
+outdir_1 = '/ramdisk/zyy/lab-results/' + \
+        'RV-Ideal-ROB{}-LQ{}-SQ{}-Reg{}/'.format(
         num_ROB,
         num_LQ,
         num_SQ,
+        num_PhysReg,
         )
-outdir_2 = 'FF-{}-{}'.format(
+outdir_2 = 'FF-LTAGE-{}-IQ{}'.format(
         current_git_tag,
         num_IQ
         )
@@ -45,7 +45,15 @@ def rv_ff(benchmark, some_extra_args, outdir_b):
 
     os.chdir(c.gem5_exec())
 
+    start_tick  = 87213866037500
+    end_tick    = 87213866138000
     options = [
+            # '--debug-flags=O3CPUAll,DLarge2,DLargeCPU',
+            # '--debug-flags=ThreePI,ReHash,TwoPhaseIssue,SSDepGraph,'
+            # 'PostponedWake,TwoPhaseMDU,WakeSquashed,Rename,IEW,IQ,Commit,'
+            # 'ROB,Decode,Fetch,O3CPU,ReHashD1',
+            # '--debug-start={}'.format   (start_tick),
+            # '--debug-end={}'.format     (end_tick),
             '--outdir=' + outdir_b,
             pjoin(c.gem5_home(), 'configs/spec2006/se_spec06.py'),
             '--spec-2006-bench',
@@ -86,6 +94,7 @@ def rv_ff(benchmark, some_extra_args, outdir_b):
             '--num-IQ={}'.format(num_IQ),
             '--num-LQ={}'.format(num_LQ),
             '--num-SQ={}'.format(num_SQ),
+            '--num-PhysReg={}'.format(num_PhysReg),
             ]
     else:
         assert False

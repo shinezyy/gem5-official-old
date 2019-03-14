@@ -1,3 +1,6 @@
+import m5
+from m5.objects import *
+
 def modifyO3CPUConfig(options, cpu):
     print('modifying O3 cpu config')
     if options.num_ROB:
@@ -13,3 +16,4 @@ def modifyO3CPUConfig(options, cpu):
         cpu.numPhysFloatRegs = options.num_PhysReg
         cpu.numPhysVecRegs = options.num_PhysReg
         cpu.numPhysCCRegs = 0
+    cpu.branchPred = LTAGE()

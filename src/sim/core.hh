@@ -48,6 +48,8 @@ inline Tick curTick() { return _curEventQueue->getCurTick(); }
 
 const Tick retryTime = 1000;
 
+const Tick cycleTime = 500;
+
 /// These are variables that are set based on the simulator frequency
 ///@{
 namespace SimClock {
