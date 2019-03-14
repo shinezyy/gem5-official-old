@@ -9,13 +9,36 @@ import time
 from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
+import subprocess
 import common as c
 
-numIQ = 128
 
-outdir = \
-    '/ramdisk/zyy/gem5_run/results/RV-Ideal-ROB300-LQ100-SQ100/CAM-IQ-{}'.
-    format(numIQ)
+current_git_tag = subprocess.check_output(
+        ['git', 'describe']).strip().decode('utf8')
+# print(current_git_tag)
+# assert False
+
+num_ROB = 300
+num_IQ  = 128
+num_LQ  = 100
+num_SQ  = 100
+num_SQ  = 100
+num_PhysReg  = 256
+
+outdir_1 = '/ramdisk/zyy/lab-results/' + \
+        'RV-Ideal-ROB{}-LQ{}-SQ{}-Reg{}/'.format(
+        num_ROB,
+        num_LQ,
+        num_SQ,
+        num_PhysReg,
+        )
+outdir_2 = 'CAM-LTAGE-{}-IQ{}'.format(
+        current_git_tag,
+        num_IQ
+        )
+
+outdir = outdir_1 + outdir_2
+
 
 arch = 'RISCV'
 
@@ -26,7 +49,15 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
 
     os.chdir(c.gem5_exec())
 
+    start_tick  = 102501012844500
+    end_tick    = 102501012945500
     options = [
+            # '--debug-flags=O3CPUAll',
+            # '--debug-flags=ThreePI,ReHash,TwoPhaseIssue,SSDepGraph,'
+            # 'PostponedWake,TwoPhaseMDU,WakeSquashed,Rename,IEW,IQ,Commit,'
+            # 'ROB,Decode,Fetch,O3CPU,ReHashD1',
+            # '--debug-start={}'.format   (start_tick),
+            # '--debug-end={}'.format     (end_tick),
             '--outdir=' + outdir_b,
             pjoin(c.gem5_home(), 'configs/spec2006/se_spec06.py'),
             '--spec-2006-bench',
@@ -63,10 +94,11 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             '--l2cache',
             '--l2_size=4MB',
             '--l2_assoc=8',
-            '--num-ROB=300',
-            '--num-IQ={}'.format(numIQ),
-            '--num-LQ=100',
-            '--num-SQ=100',
+            '--num-ROB={}'.format(num_ROB),
+            '--num-IQ={}'.format(num_IQ),
+            '--num-LQ={}'.format(num_LQ),
+            '--num-SQ={}'.format(num_SQ),
+            '--num-PhysReg={}'.format(num_PhysReg),
             ]
     else:
         assert False
