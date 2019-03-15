@@ -10,12 +10,13 @@ from multiprocessing import Pool
 import common as c
 
 
-simpoints_all = uexp('~/gem5-results/simpoint-profile')
-
+# Please set to the directory where gem5-generated bbvs stored
+simpoint_profile_dir = 'deadbeaf'
+assert simpoint_profile_dir != 'deadbeaf'
 
 def get_spec():
     x = []
-    with open('./all_compiled_spec.txt') as f:
+    with open('./all_function_spec.txt') as f:
         for line in f:
             if not line.startswith('#'):
                 x.append(line.lstrip('#').strip('\n'))
@@ -24,7 +25,7 @@ def get_spec():
 
 def choose_weights(benchmark):
     print("choose weights for", benchmark)
-    benchmark_dir = pjoin(simpoints_all, benchmark)
+    benchmark_dir = pjoin(simpoint_profile_dir, benchmark)
     os.chdir(benchmark_dir)
     max_list = []
     for i in range(10):
@@ -109,6 +110,6 @@ def cluster_and_choose(benchmark):
 
 
 if __name__ == '__main__':
-    p = Pool(27)
+    p = Pool(22)
     p.map(cluster_and_choose, get_spec())
 

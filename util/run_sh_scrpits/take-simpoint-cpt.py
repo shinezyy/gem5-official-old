@@ -12,8 +12,14 @@ from multiprocessing import Pool
 import common as c
 
 
-outdir = '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-arm-gcc-4.8'
-simpoint_profile_dir = uexp('~/gem5-results/simpoint-profile')
+# Please set to the directory where gem5-generated bbvs stored and
+# ensure that you have performed simpoint clustering on them
+simpoint_profile_dir = 'deadbeaf'
+assert simpoint_profile_dir != 'deadbeaf'
+
+# Please set to the directory where to store gem5-generated checkpoints
+outdir = 'deadbeaf'
+assert outdir != 'deadbeaf'
 
 
 def take_cpt_for_benchmark(benchmark, simpoint_file, weight_file, outdir_b):
@@ -73,11 +79,11 @@ def run(benchmark):
 
 
 def main():
-    num_thread = 27
+    num_thread = 22
 
     benchmarks = []
 
-    with open('./all_compiled_spec.txt') as f:
+    with open('./all_function_spec.txt') as f:
         for line in f:
             benchmarks.append(line.strip())
 

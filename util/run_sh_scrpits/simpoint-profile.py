@@ -13,14 +13,15 @@ import common as c
 
 cmd_timestamp = None
 
+# Please set to the directory where to store gem5-generated bbvs
+simpoint_profile_dir = 'deadbeaf'
+assert simpoint_profile_dir != 'deadbeaf'
 
 def run(benchmark):
     global cmd_timestamp
 
     gem5_dir = c.gem5_home()
-    outdir = pjoin('/ramdisk/zyy/gem5_run/'
-            'spec-simpoint-cpt-riscv-gcc-gnu-8.2.0',
-            benchmark)
+    outdir = pjoin(simpoint_profile_dir, benchmark)
 
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
