@@ -39,11 +39,17 @@ class MyPerceptron : public BPredUnit{
         // Size of each perceptron
         unsigned sizeOfPerceptrons;
 
+        // Pseudo-tagging
+        unsigned pseudoTaggingBit;
+
         // Threshold
         unsigned theta;
 
         // Weights of all perceptrons
         std::vector<std::vector<int>> weights;
+
+        // Weights for pseudo-tagging bits
+        std::vector<std::vector<int>> pweights;
 
         void updateGlobalHistTaken(ThreadID tid);
         void updateGlobalHistNotTaken(ThreadID tid);

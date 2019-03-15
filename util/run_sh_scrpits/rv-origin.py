@@ -28,13 +28,13 @@ bp_params = ['',\
              '_size_64',\
              '_size_128']
 
-alternative = ['', '_alt', '_debug', 'aliasing']
+alternative = ['', '_alt', '_debug', 'aliasing', 'pseudo-tagging']
 
 bp_type = bp_types[6]
 
 bp_param = bp_params[4]
 
-alt = alternative[3]
+alt = alternative[4]
 
 outdir = \
         '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param + alt

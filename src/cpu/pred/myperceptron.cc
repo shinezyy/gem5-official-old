@@ -7,6 +7,8 @@
 #include "base/intmath.hh"
 #include "debug/MYperceptron.hh"
 
+#define PSEUDOTAGGING true
+
 #define DEBUG 0
 #define COUNT 0
 #define ALIASING 1
@@ -17,7 +19,8 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     globalPredictorSize(params->globalPredictorSize),
     globalHistory(params->numThreads, 0),
     globalHistoryBits(ceilLog2(params->globalPredictorSize)),
-    sizeOfPerceptrons(params->sizeOfPerceptrons)
+    sizeOfPerceptrons(params->sizeOfPerceptrons),
+    pseudoTaggingBit(params->pseudoTaggingBit)
 {
     if (!isPowerOf2(globalPredictorSize)) {
         fatal("Invalid global predictor size, should be power of 2.\n");
@@ -29,6 +32,13 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
 
     weights.assign(globalPredictorSize, std::vector<int>\
             (sizeOfPerceptrons + 1, 0));
+
+#if PSEUDOTAGGING
+    pweights.assign(globalPredictorSize, std::vector<int>\
+            (pseudoTaggingBit, 0));
+    theta += 1.93 * pseudoTaggingBit;
+#endif
+
 
 #if DEBUG
     stat_perceptrons.assign(globalPredictorSize, false);
@@ -95,6 +105,15 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
             out -= weights[index][i+1];
         }
     }
+
+#if PSEUDOTAGGING
+    for (int j = 0; j < pseudoTaggingBit; j++)
+        if ((branch_addr >> (2 * (j + 1))) & 0x1)
+            out += pweights[index][j];
+        else
+            out -= pweights[index][j];
+#endif
+
 
     // Use the sign bit as the result
     bool taken = (out >= 0);
@@ -199,12 +218,20 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     // Calculate the output again
     int out = weights[index][0];
 
-    for (int i = 0; i < sizeOfPerceptrons; i++){
+    for (int i = 0; i < sizeOfPerceptrons; i++)
         if ((global_history >> i) & 0x1)
             out += weights[index][i+1];
         else
             out -= weights[index][i+1];
-    }
+
+#if PSEUDOTAGGING
+    for (int j = 0; j < pseudoTaggingBit; j++)
+        if ((branch_addr >> (2 * (j + 1))) & 0x1)
+            out += pweights[index][j];
+        else
+            out -= pweights[index][j];
+#endif
+
 
     // Updates if predicted incorrectly(squashed) or the output <= theta
     if (squashed || (abs(out) <= theta)){
@@ -237,6 +264,16 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
             else
                 weights[index][i+1] -= 1;
         }
+
+#if PSEUDOTAGGING
+        for (int j = 0; j < pseudoTaggingBit; j++){
+            if (((branch_addr >> (2 * (j + 1))) & 0x1) == taken)
+                pweights[index][j] += 1;
+            else
+                pweights[index][j] -= 1;
+        }
+#endif
+
     }
 }
 
