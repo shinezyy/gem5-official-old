@@ -37,6 +37,8 @@ class MyPerceptron : public BPredUnit{
         int getIndex(hash_type type, Addr branch_addr,\
                 uint64_t global_history);
 
+        int getIndexTheta(Addr branch_addr);
+
         // Number of perceptrons(or size of PHT)
         unsigned globalPredictorSize;
 
@@ -61,7 +63,10 @@ class MyPerceptron : public BPredUnit{
         hash_type hType;
 
         // Threshold
-        unsigned theta;
+        std::vector<unsigned> thetas;
+
+        // Number of thresholds
+        unsigned thresholdBits;
 
         // Weights of all perceptrons
         std::vector<std::vector<int>> weights;
@@ -82,7 +87,7 @@ class MyPerceptron : public BPredUnit{
         unsigned thresholdCounterBits;
 
         // Threshold counter
-        SatCounter TC;
+        std::vector<SatCounter> TC;
 
         void updateGlobalHistTaken(ThreadID tid);
         void updateGlobalHistNotTaken(ThreadID tid);

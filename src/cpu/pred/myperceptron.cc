@@ -34,7 +34,7 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
 
     historyRegisterMask = mask(globalHistoryBits);
 
-    theta = 1.93 * sizeOfPerceptrons + 0.5 * sizeOfPerceptrons;
+    // theta = 1.93 * sizeOfPerceptrons + 14;
 
     weights.assign(globalPredictorSize, std::vector<int>\
             (sizeOfPerceptrons + 1, 0));
@@ -43,17 +43,27 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     maxWeight = 1 << (bitsPerWeight - 1);
 
 #if DYNAMIC_THRESHOLD
-    thresholdCounterBits = 9;
-    unsigned TC_initialValue = 1 << (thresholdCounterBits - 2);
-    SatCounter TC(thresholdCounterBits, TC_initialValue);
-    TC.reset();
+    thresholdBits = 10;
+    thetas.assign(1 << thresholdBits, 1.93 * sizeOfPerceptrons + 14);
+
+    thresholdCounterBits = 5;
+    unsigned TC_initialValue = 1 << (thresholdCounterBits - 1);
+
+    SatCounter tc(thresholdCounterBits, TC_initialValue);
+    TC.assign(1 << thresholdBits, tc);
+    //SatCounter TC(thresholdCounterBits, TC_initialValue);
+
+    std::vector<SatCounter>::iterator sat_iter;
+
+    for (sat_iter = TC.begin(); sat_iter != TC.end(); sat_iter++)
+        (*sat_iter).reset();
     DPRINTFR(MYperceptron, "counter init is %d, max is %d\n",
-        TC_initialValue, TC.readMax());
+        TC_initialValue, TC[0].readMax());
 #endif
 
 
-    DPRINTFR(MYperceptron, "maxWeight is %d, lambda is %d, theta is %u\n",
-            maxWeight, lambda, theta);
+    DPRINTFR(MYperceptron, "maxWeight is %d, lambda is %d \n",
+            maxWeight, lambda);
 
     if (indexMethod == "MODULO")
         hType = MODULO;
@@ -73,7 +83,9 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
 #if PSEUDOTAGGING
     pweights.assign(globalPredictorSize, std::vector<int>\
             (pseudoTaggingBit, 0));
-    theta += 1.93 * pseudoTaggingBit;
+    std::vector<unsigned>::iterator u_iter;
+    for (u_iter = thetas.begin(); u_iter != thetas.end(); u_iter++)
+        *u_iter += 1.93 * pseudoTaggingBit;
 #endif
 
 
@@ -133,6 +145,12 @@ MyPerceptron::getIndex(hash_type type, Addr branch_addr,
         fatal("Not implemented indexing method!\n");
 }
 
+int
+MyPerceptron::getIndexTheta(Addr branch_addr)
+{
+    return (branch_addr >> 2) & mask(thresholdBits);
+}
+
 bool
 MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 {
@@ -183,6 +201,9 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
     bool taken = (out >= 0);
 
 #if COUNT
+    int t_index = getIndexTheta(branch_addr);
+    unsigned theta = thetas[t_index];
+
     count++;
     c_temp++;
     if (abs(out) <= theta){
@@ -300,7 +321,8 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
 
     //DPRINTFR(MYperceptron,"theta is %d\n", theta);
-
+    int t_index = getIndexTheta(branch_addr);
+    unsigned theta = thetas[t_index];
 
     // Updates if predicted incorrectly(squashed) or the output <= theta
     if (squashed || (abs(out) <= theta)){
@@ -380,15 +402,15 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
 #if DYNAMIC_THRESHOLD
     if (squashed){
-        if (TC.increment()){
-            theta += 1;
-            TC.reset();
+        if (TC[t_index].increment()){
+            thetas[t_index] += 1;
+            TC[t_index].reset();
         }
     }
     else if (abs(out) <= theta){
-        if (TC.decrement()){
-            theta -= 1;
-            TC.reset();
+        if (TC[t_index].decrement()){
+            thetas[t_index] -= 1;
+            TC[t_index].reset();
         }
     }
 #endif
