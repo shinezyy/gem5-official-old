@@ -85,21 +85,23 @@ class SatCounter
     /**
      * Increments the counter's current value.
      */
-    void increment()
+    bool increment()
     {
         if (counter < maxVal) {
             ++counter;
         }
+        return counter >= maxVal;
     }
 
     /**
      * Decrements the counter's current value.
      */
-    void decrement()
+    bool decrement()
     {
         if (counter > 0) {
             --counter;
         }
+        return counter <= 0;
     }
 
     /**
@@ -107,6 +109,18 @@ class SatCounter
      */
     uint8_t read() const
     { return counter; }
+
+    /**
+     * Return the counter's sign
+     */
+    bool sign() const
+    { return counter >= maxVal >> 1; }
+
+    /**
+     * Return the maximum value of the counter
+     */
+    uint8_t readMax() const
+    { return maxVal; }
 
   private:
     uint8_t initialVal;

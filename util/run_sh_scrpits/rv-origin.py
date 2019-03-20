@@ -13,6 +13,10 @@ import common as c
 
 numIQ = 128
 
+debug_flag = 'MYperceptron'
+
+target_function = 'target_function_spec.txt'
+
 bp_types = ['LTAGE',\
             'TournamentBP',\
             'PerceptronLocal',\
@@ -28,16 +32,30 @@ bp_params = ['',\
              '_size_64',\
              '_size_128']
 
-alternative = ['', '_alt', '_debug', 'aliasing', 'pseudo-tagging']
+indexing = ['_modulo',\
+            '_bitwiseXor',\
+            '_iPoly',\
+            '_primeModulo',\
+            '_primeDisplacement']
+
+alternative = ['',\
+               '_alt',\
+               '_debug',\
+               '_aliasing',\
+               '_pseudo-tagging',\
+               '_theta',\
+               '_dynamic-threshold']
 
 bp_type = bp_types[6]
 
 bp_param = bp_params[4]
 
-alt = alternative[4]
+alt = alternative[3] + alternative[6]
+
+index = indexing[1]
 
 outdir = \
-        '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param + alt
+        '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param + index + alt
 
 arch = 'RISCV'
 
@@ -50,7 +68,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
 
     options = [
             '--outdir=' + outdir_b,
-            '--debug-flags=MYperceptron',
+            '--debug-flags=' + debug_flag,
             pjoin(c.gem5_home(), 'configs/spec2006/se_spec06.py'),
             '--spec-2006-bench',
             '-b', '{}'.format(benchmark),
@@ -130,7 +148,7 @@ def main():
 
     benchmarks = []
 
-    with open('./all_function_spec.txt') as f:
+    with open('./' + target_function) as f:
         for line in f:
             benchmarks.append(line.strip())
 
