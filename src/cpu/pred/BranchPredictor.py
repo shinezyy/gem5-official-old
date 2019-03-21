@@ -86,7 +86,7 @@ class MyPerceptron(BranchPredictor):
     sizeOfPerceptrons   = Param.Unsigned(64, "Size of each Perceptron")
     pseudoTaggingBit    = Param.Unsigned(8, "Numeber of pseudo-tagging bits")
     indexMethod         = Param.String('BITWISE_XOR', "Indexing method")
-    bitsPerWeight       = Param.Unsigned(6, "Bits used to store each weight")
+    bitsPerWeight       = Param.Unsigned(10, "Bits used to store each weight")
     lamda               = Param.Unsigned(1, "Learning rate")
 
 class PathPerceptron(BranchPredictor):

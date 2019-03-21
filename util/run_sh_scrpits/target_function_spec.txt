@@ -1,4 +1,1 @@
 dealII
-astar
-milc
-hmmer

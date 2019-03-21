@@ -15,7 +15,7 @@ numIQ = 128
 
 debug_flag = 'MYperceptron'
 
-target_function = 'target_function_spec.txt'
+target_function = 'all_function_spec.txt'
 
 bp_types = ['LTAGE',\
             'TournamentBP',\
@@ -38,6 +38,8 @@ indexing = ['_modulo',\
             '_primeModulo',\
             '_primeDisplacement']
 
+lrs = ['_lamda1', '_lamda2', '_lamda3']
+
 alternative = ['',\
                '_alt',\
                '_debug',\
@@ -50,12 +52,16 @@ bp_type = bp_types[6]
 
 bp_param = bp_params[4]
 
-alt = alternative[3] + alternative[6]
-
 index = indexing[1]
 
+lr = lrs[1]
+
+alt = alternative[3]
+
+
+
 outdir = \
-        '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param + index + alt
+    '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param + index + lr + alt
 
 arch = 'RISCV'
 
