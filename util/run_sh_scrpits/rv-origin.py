@@ -48,20 +48,23 @@ alternative = ['',\
                '_theta',\
                '_dynamic-threshold']
 
+dyn_size = ['', '_dyn4', '_dyn7']
+
 bp_type = bp_types[6]
 
 bp_param = bp_params[4]
 
-index = indexing[1]
+index = indexing[0]
 
-lr = lrs[1]
+lr = lrs[0]
 
-alt = alternative[3]
+alt = alternative[3]# + alternative[6]
 
-
+dyn = dyn_size[0]
 
 outdir = \
-    '/home/glr/gem5/gem5-results/test_' + bp_type + bp_param + index + lr + alt
+    '/home/glr/gem5/gem5-results/test_'\
+        + bp_type + bp_param + index + lr + alt + dyn
 
 arch = 'RISCV'
 

@@ -27,17 +27,17 @@ class MyPerceptron : public BPredUnit{
         bool lookup(ThreadID tid, Addr branch_addr, void * &bp_bistory);
         void uncondBranch(ThreadID tid, Addr pc, void * &bp_history);
         void btbUpdate(ThreadID tid, Addr branch_addr, void * &bp_history);
-        void update(ThreadID tid, Addr branch_addr, bool taken,
+        void update(ThreadID tid, Addr branch_addr, bool taken,\
                 void *bp_history, bool squashed);
         void squash(ThreadID tid, void * bp_history);
         unsigned getGHR(ThreadID tid, void * bp_history) const;
 
     private:
 
-        int getIndex(hash_type type, Addr branch_addr,\
+        inline int getIndex(hash_type type, Addr branch_addr,\
                 uint64_t global_history);
 
-        int getIndexTheta(Addr branch_addr);
+        inline int getIndexTheta(Addr branch_addr);
 
         // Number of perceptrons(or size of PHT)
         unsigned globalPredictorSize;

@@ -85,7 +85,7 @@ class MyPerceptron(BranchPredictor):
     globalPredictorSize = Param.Unsigned(8192, "Size of global Perdictor")
     sizeOfPerceptrons   = Param.Unsigned(64, "Size of each Perceptron")
     pseudoTaggingBit    = Param.Unsigned(8, "Numeber of pseudo-tagging bits")
-    indexMethod         = Param.String('BITWISE_XOR', "Indexing method")
+    indexMethod         = Param.String('MODULO', "Indexing method")
     bitsPerWeight       = Param.Unsigned(10, "Bits used to store each weight")
     lamda               = Param.Unsigned(1, "Learning rate")
 

@@ -52,7 +52,7 @@ historyRegisterMask);
     thresholdBits = 10;
     thetas.assign(1 << thresholdBits, 1.93 * sizeOfPerceptrons + 14);
 
-    thresholdCounterBits = 4;
+    thresholdCounterBits = 7;
     unsigned TC_initialValue = 1 << (thresholdCounterBits - 1);
 
     SatCounter tc(thresholdCounterBits, TC_initialValue);
@@ -107,14 +107,14 @@ historyRegisterMask);
 #endif
 }
 
-void
+inline void
 MyPerceptron::updateGlobalHistTaken(ThreadID tid)
 {
     globalHistory[tid] = (globalHistory[tid] << 1) | 1;
     globalHistory[tid] &= historyRegisterMask;
 }
 
-void
+inline void
 MyPerceptron::updateGlobalHistNotTaken(ThreadID tid)
 {
     globalHistory[tid] = (globalHistory[tid] << 1);
@@ -127,12 +127,12 @@ MyPerceptron::btbUpdate(ThreadID tid, Addr branch_addr, void * &bp_history)
     globalHistory[tid] &= (historyRegisterMask & ~ULL(1));
 }
 
-int
+inline int
 MyPerceptron::getIndex(hash_type type, Addr branch_addr,
         uint64_t global_history)
 {
     if (type == MODULO)
-        return (global_history ^ (branch_addr >> 2)) & historyRegisterMask;
+        return (branch_addr >> 2) & historyRegisterMask;
     else if (type == BITWISE_XOR){
         uint64_t x = branch_addr >> 2;
         uint64_t y = branch_addr >> (2 + globalHistoryBits);
@@ -161,7 +161,7 @@ MyPerceptron::getIndex(hash_type type, Addr branch_addr,
         fatal("Not implemented indexing method!\n");
 }
 
-int
+inline int
 MyPerceptron::getIndexTheta(Addr branch_addr)
 {
     return (branch_addr >> 2) & mask(thresholdBits);
