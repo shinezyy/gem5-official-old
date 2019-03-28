@@ -268,16 +268,16 @@ DPRINTFR(MYperceptron, "At the %lluth lookup, %d%% less than theta(%d),\
     static uint64_t count = 0;
     static uint64_t alias = 0;
     count++;
-    if (thread_history != history_record[index] ||
-           branch_addr != addr_record[index])
-    {
+    if (branch_addr != addr_record[index])
         alias++;
-    }
+
     history_record[index] = thread_history;
     addr_record[index] = branch_addr;
 
-    if (count % 100000 == 0)
+    if (count % 100000 == 0){
         DPRINTFR(MYperceptron, "%lluth Lookup: %llu! aliases\n", count, alias);
+        alias = 0;
+    }
 #endif
 
 

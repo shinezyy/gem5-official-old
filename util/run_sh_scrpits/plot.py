@@ -9,6 +9,7 @@ import csv
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from enum import Enum
 from math import *
 
 res_dir = '/home/glr/gem5/gem5-results'
@@ -17,6 +18,11 @@ unconf_pattern = re.compile(r'\d+%')
 alias_pattern  = re.compile(r'\d+!')
 
 total_bench = 22
+
+class Type(Enum):
+    unconf = 1
+    alias = 2
+    nu_ratio = 3
 
 # get the subdirectory last modified
 def get_latest_subdir(dir='.'):
@@ -107,7 +113,7 @@ def write_csv(dir, data):
         writer.writerows(data)
     csvfile.close()
 
-def plot_unconf(target_dir, data):
+def plot(target_dir, data, type):
     fig = plt.figure(figsize=(20,10))
     num_subfigs = 8
     count = 0
@@ -128,136 +134,87 @@ def plot_unconf(target_dir, data):
         plt.subplot(num_h, num_w, (count%num_subfigs)+1)
         count += 1
 
-        plt.plot(mat[:,0], mat[:,1], label='< theta',   color='r')
-        plt.plot(mat[:,0], mat[:,2], label='< theta/2', color='y')
-        plt.plot(mat[:,0], mat[:,3], label='< theta/4', color='b')
+        if type == Type.unconf:
+            plt.plot(mat[:,0], mat[:,1], label='< theta',   color='r')
+            plt.plot(mat[:,0], mat[:,2], label='< theta/2', color='y')
+            plt.plot(mat[:,0], mat[:,3], label='< theta/4', color='b')
 
-        plt.xlabel(name)
-        plt.ylabel('percentage')
+            plt.xlabel(name)
+            plt.ylabel('percentage')
 
-        plt.legend(loc='best')
+            plt.legend(loc='best')
+        elif type == Type.alias:
+            plt.plot(mat[:,0],mat[:,1], label='', color='b')
+
+            plt.xlabel(name)
+            plt.ylabel('number')
+
 
         if count % num_subfigs == 0 or count == total_bench:
             plt.savefig(pjoin(target_dir, str(count)+'.png'))
             plt.close('all')
             fig = plt.figure(figsize=(20,10))
 
-def per_test_process_unconf(out_dirs):
+def per_test_process(out_dirs, type):
     data = []
     target_dir = ''
+
+    first_row = []
+    pattern = unconf_pattern
+    issue = ''
+    if type == Type.unconf:
+        first_row = ['', 'less_than_theta', 'less_than_theta/2',\
+                'less_than_theta/4']
+        pattern = unconf_pattern
+        issue = 'unconf'
+    elif type == Type.alias:
+        first_row = ['', '']
+        pattern = alias_pattern
+        issue = 'alias'
+
     for d in out_dirs:
-        matrix = extract_data(d, unconf_pattern)
-        matrix.insert(0, ['', 'less_than_theta', 'less_than_theta/2',\
-                    'less_than_theta/4'])
+
+        matrix = extract_data(d, pattern)
+        matrix.insert(0, first_row)
+
         p = d.split('/')
         function = p[-2]
         test     = p[-3]
 
-        target_dir = pjoin(res_dir, test, 'res', 'unconf')
+        target_dir = pjoin(res_dir, test, 'res', issue)
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
         #print(target_dir, 'is target output dir\n')
         write_csv(pjoin(target_dir, function+'.csv'), matrix)
 
         data.append([function, matrix])
-    plot_unconf(target_dir, data)
 
-def get_unconfident_percent(target_str='debug', latest=True):
+    plot(target_dir, data, type)
+
+def get_unconfident_percent(target_str=None, latest=True):
     pattern = unconf_pattern
     out_dirs = get_output(target_str, l=latest)
     interval = 100000
 
     if latest:
-        per_test_process_unconf(out_dirs)
+        per_test_process(out_dirs, Type.unconf)
     else:
         for test in out_dirs:
-            per_test_process_unconf(test)
+            per_test_process(test, Type.unconf)
 
-    #plot_unconf()
 
-def get_num_aliasing(target_str='alias'):
-    pattern = re.compile(r'\d+!')
-    out_dirs = get_output('.', target_str)
+def get_num_aliasing(target_str=None, latest=True):
+    pattern = alias_pattern
+    out_dirs = get_output(target_str, l=latest)
     interval = 100000
 
-    count = 0;
-    fig = plt.figure(figsize=(20,10))
-    num_subfigs = 8
-
-    for d in out_dirs:
-        matrix = [['', '']]
-        seq = interval
-
-        out_txt = codecs.open(d, "r", encoding='utf-8',errors='ignore')
-
-        temp = 0
-
-        for line in out_txt:
-            #line = line.decode('unicode_escape').encode('utf-8')
-            #print(line)
-            if "Lookup" in line:
-                row = [seq/interval]
-                seq += interval
-                for num in pattern.finditer(line):
-                    #print(num.group())
-                    item = num.group()
-                    item = item[:-1]
-                    row.append(float(item) - temp)
-                    #print(float(item))
-                    #print(temp)
-                    #print(float(item)-temp)
-                    temp = float(item)
-                    #print('temp is', temp)
-                matrix.append(row)
-        out_txt.close()
-
-        p = d.split('/')
-        #print(p)
-        function = p[-2]
-
-        with open(os.path.join('./data',\
-              target_str, function+'.csv'), 'w') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerows(matrix)
-
-        csvfile.close()
-
-       # fig = plt.figure(0)
-        print(function, np.array(matrix).shape)
-
-        matrix = np.array(matrix[1:])
-
-        num_h = floor(sqrt(num_subfigs))
-        num_w = int(num_subfigs / num_h)
-        assert(num_h * num_w >= num_subfigs)
-        plt.subplot(num_h, num_w, (count%num_subfigs)+1)
-        count+=1
-
-        plt.plot(matrix[:,0],matrix[:,1], label='', color='b')
-
-        plt.xlabel(function)
-        plt.ylabel('number')
-
-        #plt.legend(loc='best')
-
-#        plt.xticks(rotation=70)
-        if count % num_subfigs == 0 or count == 22:
-            plt.savefig(os.path.join('data', target_str,\
-                    str(count/num_subfigs)+'.png'))
-            plt.close('all')
-            fig = plt.figure(figsize=(20,10))
+    if latest:
+        per_test_process(out_dirs, Type.alias)
+    else:
+        for test in out_dirs:
+            per_test_process(test, Type.alias)
 
 def main():
-    #if sys.argv[1] == 'a':
-    #    if (sys.argv[2]):
-    #        get_num_aliasing(sys.argv[2])
-    #    else:
-    #        get_num_aliasing()
-    #elif sys.argv[1] == 'c':
-    #    if (sys.atgv[2]):
-    #        get_unconfident_percent(sys.argv[2])
-    #    else:
-    #        get_unconfident_percent()
 
     parser = argparse.ArgumentParser(usage='test of argparse')
     parser.add_argument('-a', '--aliasing', action='store_true',
