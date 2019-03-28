@@ -10,6 +10,7 @@ from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
 import common as c
+import argparse
 
 numIQ = 128
 
@@ -118,12 +119,26 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             '--num-IQ={}'.format(numIQ),
             '--num-LQ=100',
             '--num-SQ=100',
-            '--num-PhysReg=256',
-            ]
+            '--num-PhysReg=256']
+
+        opt = some_extra_args
+        if opt.bp_size != None:
+            options += ['--bp-size='+opt.bp_size]
+        if opt.bp_index_type != None:
+            options += ['--bp-index-type='+opt.bp_index_type]
+        if opt.bp_history_len != None:
+            options += ['--bp-history-len='+opt.bp_history_len]
+        if opt.bp_learning_rate != None:
+            options += ['--bp-learning-rate='+opt.bp_learning_rate]
+        if opt.bp_pseudo_tagging != None and opt.bp_pseudo_tagging != 0:
+            options += ['--bp-pesudo-tagging='+opt.bp_pseudo_tagging]
+        if opt.bp_dyn_thres != None:
+            options += ['--bp-dyn-thres='+opt.bp_dyn_thres]
+            if opt.bp_tc_bit != None:
+                options += ['--bp-tc-bit='+opt.bp_tc_bit]
     else:
         assert False
 
-    print(options)
     print(options)
     gem5 = sh.Command(pjoin(c.gem5_build(arch), 'gem5.opt'))
     # sys.exit(0)
@@ -134,7 +149,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             )
 
 
-def run(benchmark):
+def run(benchmark, opt):
     outdir_b = pjoin(outdir, benchmark)
     if not os.path.isdir(outdir_b):
         os.makedirs(outdir_b)
@@ -142,7 +157,7 @@ def run(benchmark):
     cpt_flag_file = pjoin(c.gem5_cpt_dir(arch), benchmark,
             'ts-take_cpt_for_benchmark')
     prerequisite = os.path.isfile(cpt_flag_file)
-    some_extra_args = None
+    some_extra_args = opt
 
     if prerequisite:
         print('cpt flag found, is going to run gem5 on', benchmark)
@@ -153,19 +168,67 @@ def run(benchmark):
 
 
 def main():
-    num_thread = 4
+    parser = argpase.ArgumentParser(usage='-n [-s | -a]')
+
+    parser.add_argument('-n', '--num-threads', action='store', type=int,
+                        help='Num threads used to run benchmarks')
+
+    group = parser.add_mutually_exclusive_group()
+
+    group.add_argument('-s', '--specified-benchmark', action='append',
+                        type=str,
+                        help='Specify benchmarks to run')
+
+    group.add_argument('-a', '--all', action='store_true', default=False,
+                        help='Whether run all the benchmarks')
+
+    # params of perceptron based branch predictor
+    parser.add_argument('--bp-size', action='store', type=int,
+                        help='Global predictor size')
+
+    parser.add_argument('--bp-index-type', action='store', type=str,
+                        help='Indexing method of perceptron BP')
+
+    parser.add_argument('--bp-history-len', action='store', type=int,
+                        help='History length(size of each perceptron)')
+
+    parser.add_argument('--bp-learning-rate', action='store', type=int,
+                        help='Learning rate of perceptron BP')
+
+    parser.add_argument('--bp-pseudo-tagging', action='store', type=int,
+                        help='Num bits of pseudo-tagging')
+
+    parser.add_argument('--bp-dyn-thres', action='store', type=int,
+                        help='log2 of num theta used')
+
+    parser.add_argument('--bp-tc-bit', action='store', type=int,
+                        help='valid when dyn-thres is not 0, counter bit')
+
+    opt = parser.parse_args()
+
+    num_thread = opt.num_threads
 
     benchmarks = []
 
-    with open('./' + target_function) as f:
-        for line in f:
-            benchmarks.append(line.strip())
+    if opt.specified_benchmark == None:
+        targets = ''
+        if opt.all:
+            targets = 'all_function_spec.txt'
+        else:
+            targets = 'target_function_spec.txt'
+
+        with open(targets) as f:
+            for line in f:
+                benchmarks.append(line.strip())
+    else:
+        for bench in opt.specified_benchmark:
+            benchmarks.append(bench)
 
     if num_thread > 1:
         p = Pool(num_thread)
-        p.map(run, benchmarks)
+        p.map(run, benchmarks, opt)
     else:
-        run(benchmarks[0])
+        run(benchmarks[0], opt)
 
 
 if __name__ == '__main__':
