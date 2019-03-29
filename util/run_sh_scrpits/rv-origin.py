@@ -9,6 +9,7 @@ import time
 from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
+#from pathos.multiprocessing import ProcessingPoll as Pool
 import common as c
 import argparse
 
@@ -83,29 +84,29 @@ def out_dir_gen(opt):
 
     if opt.bp_size:
         outdir = outdir + '_size' + str(opt.bp_size)
-    else
+    else:
         outdir = outdir + '_size' + str(default_params['size'])
 
     if opt.bp_index_type:
         outdir = outdir + '_index' + str(opt.bp_index_type)
     else:
         outdir = outdir + '_index' + str(default_params['index'])
-    
+
     if opt.bp_history_len:
         outdir = outdir + '_his' + str(opt.bp_history_len)
     else:
         outdir = outdir + '_his' + str(default_params['his_len'])
-    
+
     if opt.bp_learning_rate:
         outdir = outdir + '_lr' + str(opt.bp_learning_rate)
     else:
         outdir = outdir + '_lr' + str(default_params['lr'])
-    
+
     if opt.bp_pseudo_tagging:
         outdir = outdir + '_pseudotag' + str(opt.bp_pseudo_tagging)
     else:
         outdir = outdir + '_pseudotag' + str(default_params['pseudo-tag'])
-    
+
     if opt.bp_dyn_thres:
         outdir = outdir + '_dyn' + str(opt.bp_dyn_thres)
     else:
@@ -115,7 +116,7 @@ def out_dir_gen(opt):
         outdir = outdir + '_tc' + str(opt.bp_tc_bit)
     else:
         outdir = outdir + '_tc' + str(default_params['tc-bit'])
-    
+
     print('out dir is', outdir)
 
     return outdir
@@ -235,7 +236,8 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             )
 
 
-def run(benchmark, opt):
+def run(args):
+    [benchmark, opt] = args
     outdir = out_dir_gen(opt)
     outdir_b = pjoin(outdir, benchmark)
     if not os.path.isdir(outdir_b):
@@ -257,11 +259,14 @@ def run(benchmark, opt):
 def main():
     parser = argparse.ArgumentParser(usage='-n [-s | -a]')
 
-    parser_add_argument(parser)
+    parser_add_arguments(parser)
 
     opt = parser.parse_args()
 
-    num_thread = opt.num_threads
+    if opt.num_threads:
+        num_thread = opt.num_threads
+    else:
+        num_thread = 4
 
     benchmarks = []
 
@@ -279,9 +284,15 @@ def main():
         for bench in opt.specified_benchmark:
             benchmarks.append(bench)
 
+    print(benchmarks)
+    print(opt)
     if num_thread > 1:
         p = Pool(num_thread)
-        p.map(run, benchmarks, opt)
+        #print(len(benchmarks))
+        args = [[b, opt] for b in benchmarks]
+        #print(args)
+        #exit()
+        p.map(run, args)
     else:
         run(benchmarks[0], opt)
 
