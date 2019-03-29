@@ -18,6 +18,20 @@ debug_flag = 'MYperceptron'
 
 target_function = 'all_function_spec.txt'
 
+res_dir = '/home/glr/gem5/gem5-results/'
+
+arch = 'RISCV'
+
+default_params = {\
+    'size': 8192,
+    'index': 'MODULO',
+    'his_len': 64,
+    'lr': 1,
+    'pseudo-tag': 0,
+    'dyn-thres': 0,
+    'tc-bit': 0
+}
+
 bp_types = ['LTAGE',\
             'TournamentBP',\
             'PerceptronLocal',\
@@ -63,11 +77,48 @@ alt = alternative[3]# + alternative[6]
 
 dyn = dyn_size[0]
 
-outdir = \
-    '/home/glr/gem5/gem5-results/test_'\
-        + bp_type + bp_param + index + lr + alt + dyn
 
-arch = 'RISCV'
+def out_dir_gen(opt):
+    outdir = res_dir + 'my'
+
+    if opt.bp_size:
+        outdir = outdir + '_size' + str(opt.bp_size)
+    else
+        outdir = outdir + '_size' + str(default_params['size'])
+
+    if opt.bp_index_type:
+        outdir = outdir + '_index' + str(opt.bp_index_type)
+    else:
+        outdir = outdir + '_index' + str(default_params['index'])
+    
+    if opt.bp_history_len:
+        outdir = outdir + '_his' + str(opt.bp_history_len)
+    else:
+        outdir = outdir + '_his' + str(default_params['his_len'])
+    
+    if opt.bp_learning_rate:
+        outdir = outdir + '_lr' + str(opt.bp_learning_rate)
+    else:
+        outdir = outdir + '_lr' + str(default_params['lr'])
+    
+    if opt.bp_pseudo_tagging:
+        outdir = outdir + '_pseudotag' + str(opt.bp_pseudo_tagging)
+    else:
+        outdir = outdir + '_pseudotag' + str(default_params['pseudo-tag'])
+    
+    if opt.bp_dyn_thres:
+        outdir = outdir + '_dyn' + str(opt.bp_dyn_thres)
+    else:
+        outdir = outdir + '_dyn' + str(default_params['dyn-thres'])
+
+    if opt.bp_tc_bit:
+        outdir = outdir + '_tc' + str(opt.bp_tc_bit)
+    else:
+        outdir = outdir + '_tc' + str(default_params['tc-bit'])
+    
+    print('out dir is', outdir)
+
+    return outdir
 
 def parser_add_arguments(parser):
     parser.add_argument('-n', '--num-threads', action='store', type=int,
@@ -166,7 +217,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
         if opt.bp_learning_rate != None:
             options += ['--bp-learning-rate='+opt.bp_learning_rate]
         if opt.bp_pseudo_tagging != None and opt.bp_pseudo_tagging != 0:
-            options += ['--bp-pesudo-tagging='+opt.bp_pseudo_tagging]
+            options += ['--bp-pseudo-tagging='+opt.bp_pseudo_tagging]
         if opt.bp_dyn_thres != None:
             options += ['--bp-dyn-thres='+opt.bp_dyn_thres]
             if opt.bp_tc_bit != None:
@@ -185,6 +236,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
 
 
 def run(benchmark, opt):
+    outdir = out_dir_gen(opt)
     outdir_b = pjoin(outdir, benchmark)
     if not os.path.isdir(outdir_b):
         os.makedirs(outdir_b)
