@@ -30,3 +30,30 @@ def addO3Options(parser):
             action='store', type='int',
             help="num physical registers")
 
+    parser.add_option("--bp-size",
+            action='store', type=int,
+            help="Global predictor size")
+
+    parser.add_option("--bp-index-type",
+            action='store', type=str,
+            help="Indexing method of perceptronBP")
+
+    parser.add_option("--bp-history-len",
+            action='store', type=int,
+            help="History length(size of each perceptron")
+
+    parser.add_option("--bp-learning-rate",
+            action='store', type=int,
+            help="Learning rate of perceptronBP")
+
+    parser.add_option("--bp-pseudo-tagging",
+            action='store', type=int,
+            help="Num bits of pseudo-tagging")
+
+    parser.add_option("--bp-dyn-thres",
+            action='store', type=int,
+            help="log2 of num theta used")
+
+    parser.add_option("--bp-tc-bit",
+            action='store', type=int,
+            help="Threshold counter bit, valid when dyn-thres > 0")

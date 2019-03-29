@@ -69,6 +69,41 @@ outdir = \
 
 arch = 'RISCV'
 
+def parser_add_arguments(parser):
+    parser.add_argument('-n', '--num-threads', action='store', type=int,
+                        help='Num threads used to run benchmarks')
+
+    group = parser.add_mutually_exclusive_group()
+
+    group.add_argument('-s', '--specified-benchmark', action='append',
+                        type=str,
+                        help='Specify benchmarks to run')
+
+    group.add_argument('-a', '--all', action='store_true', default=False,
+                        help='Whether run all the benchmarks')
+
+    # params of perceptron based branch predictor
+    parser.add_argument('--bp-size', action='store', type=int,
+                        help='Global predictor size')
+
+    parser.add_argument('--bp-index-type', action='store', type=str,
+                        help='Indexing method of perceptron BP')
+
+    parser.add_argument('--bp-history-len', action='store', type=int,
+                        help='History length(size of each perceptron)')
+
+    parser.add_argument('--bp-learning-rate', action='store', type=int,
+                        help='Learning rate of perceptron BP')
+
+    parser.add_argument('--bp-pseudo-tagging', action='store', type=int,
+                        help='Num bits of pseudo-tagging')
+
+    parser.add_argument('--bp-dyn-thres', action='store', type=int,
+                        help='log2 of num theta used')
+
+    parser.add_argument('--bp-tc-bit', action='store', type=int,
+                        help='valid when dyn-thres is not 0, counter bit')
+
 def rv_origin(benchmark, some_extra_args, outdir_b):
 
     interval = 200*10**6
@@ -168,41 +203,9 @@ def run(benchmark, opt):
 
 
 def main():
-    parser = argpase.ArgumentParser(usage='-n [-s | -a]')
+    parser = argparse.ArgumentParser(usage='-n [-s | -a]')
 
-    parser.add_argument('-n', '--num-threads', action='store', type=int,
-                        help='Num threads used to run benchmarks')
-
-    group = parser.add_mutually_exclusive_group()
-
-    group.add_argument('-s', '--specified-benchmark', action='append',
-                        type=str,
-                        help='Specify benchmarks to run')
-
-    group.add_argument('-a', '--all', action='store_true', default=False,
-                        help='Whether run all the benchmarks')
-
-    # params of perceptron based branch predictor
-    parser.add_argument('--bp-size', action='store', type=int,
-                        help='Global predictor size')
-
-    parser.add_argument('--bp-index-type', action='store', type=str,
-                        help='Indexing method of perceptron BP')
-
-    parser.add_argument('--bp-history-len', action='store', type=int,
-                        help='History length(size of each perceptron)')
-
-    parser.add_argument('--bp-learning-rate', action='store', type=int,
-                        help='Learning rate of perceptron BP')
-
-    parser.add_argument('--bp-pseudo-tagging', action='store', type=int,
-                        help='Num bits of pseudo-tagging')
-
-    parser.add_argument('--bp-dyn-thres', action='store', type=int,
-                        help='log2 of num theta used')
-
-    parser.add_argument('--bp-tc-bit', action='store', type=int,
-                        help='valid when dyn-thres is not 0, counter bit')
+    parser_add_argument(parser)
 
     opt = parser.parse_args()
 

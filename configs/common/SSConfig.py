@@ -13,3 +13,22 @@ def modifyO3CPUConfig(options, cpu):
         cpu.numPhysFloatRegs = options.num_PhysReg
         cpu.numPhysVecRegs = options.num_PhysReg
         cpu.numPhysCCRegs = 0
+
+    # TODO: check whether is perceptronBP
+    #if cpu.branchPred == MyPerceptron:
+    if options.bp_size:
+        cpu.branchPred.globalPredictorSize = options.bp_size
+    if options.bp_index_type:
+        cpu.branchPred.indexMethod = options.bp_index_type
+    if options.bp_history_len:
+        cpu.branchPred.sizeOfPerceptrons = options.bp_history_len
+    if options.bp_learning_rate:
+        cpu.branchPred.lamda = options.bp_learning_rate
+    if options.bp_pseudoTagging:
+        cpu.branchPred.pseudoTaggingBit = options.bp_pseudo_tagging
+
+    #if opt.bp_dyn_thres:
+     #   cpu.branchPred.dynamicThresholdBit = options.bp_dyn_thres
+      #  if opt.bp_tc_bit:
+       #     cpu.branchPred.thresholdCounterBit = options.bp_tc_bit
+

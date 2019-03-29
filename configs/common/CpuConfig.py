@@ -128,7 +128,6 @@ def config_etrace(cpu_cls, cpu_list, options):
 for name, cls in inspect.getmembers(m5.objects, is_cpu_class):
     _cpu_classes[name] = cls
 
-
 from m5.defines import buildEnv
 from importlib import import_module
 for package in [ "generic", buildEnv['TARGET_ISA']]:
