@@ -60,30 +60,32 @@ def main():
     options = []
 
     if opt.default:
-        pass
+        rv_origin()
     else:
-        options = ['--num-threads={}'.format(num_thread)]
+        options = []
         if opt.all:
             combinations = [[s, i, h, l, p, d, t] for s in size for i in index\
                     for h in hislen for l in lr for p in pseudo_tag\
                     for d in dyn_thres for t in tc_bit]
             for [s, i, h, l, p, d, t] in combinations:
-                options += ['--bp-size={}'.format(s),
+                options = ['--num-threads={}'.format(num_thread),
+                           '--bp-size={}'.format(s),
                            '--bp-index-type={}'.format(i),
                            '--bp-history-len={}'.format(h),
                            '--bp-learning-rate={}'.format(l),
                            '--bp-pseudo-tagging={}'.format(p),
                            '--bp-dyn-thres={}'.format(d),
                            '--bp-tc-bit={}'.format(t)]
+                if opt.all_benchmarks:
+                    options += ['-a']
+                rv_origin(*options)
         elif opt.index:
             for i in index:
-                options += ['--bp-index-type={}'.format(i)]
-
-    if opt.all_benchmarks:
-        options += ['-a']
-
-    rv_origin(*options)
-
+                options = ['--num-threads={}'.format(num_thread),
+                           '--bp-index-type={}'.format(i)]
+                if opt.all_benchmarks:
+                    options += ['-a']
+                rv_origin(*options)
 
 if __name__ == '__main__':
     main()

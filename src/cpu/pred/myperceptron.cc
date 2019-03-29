@@ -12,7 +12,7 @@
 #define DYNAMIC_THRESHOLD false
 
 #define DEBUG 0
-#define COUNT 0
+#define COUNT 1
 #define ALIASING 1
 #define NU_RATIO 0
 
@@ -170,8 +170,8 @@ MyPerceptron::getIndexTheta(Addr branch_addr)
 bool
 MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 {
-#if COUNT
     static uint64_t count = 0;
+#if COUNT
     static uint64_t less_than_theta = 0;
     static uint64_t less_than_half_of_theta = 0;
     static uint64_t less_than_quater_of_theta = 0;
@@ -265,7 +265,6 @@ DPRINTFR(MYperceptron, "At the %lluth lookup, %d%% less than theta(%d),\
 #endif
 
 #if ALIASING
-    static uint64_t count = 0;
     static uint64_t alias = 0;
     count++;
     if (branch_addr != addr_record[index])
