@@ -33,51 +33,6 @@ default_params = {\
     'tc-bit': 0
 }
 
-bp_types = ['LTAGE',\
-            'TournamentBP',\
-            'PerceptronLocal',\
-            'Perceptron',\
-            'PathPerceptron',\
-            'LocalBP',\
-            'MyPerceptron']
-
-bp_params = ['',\
-             '_size_16',\
-             '_size_20',\
-             '_size_32',\
-             '_size_64',\
-             '_size_128']
-
-indexing = ['_modulo',\
-            '_bitwiseXor',\
-            '_iPoly',\
-            '_primeModulo',\
-            '_primeDisplacement']
-
-lrs = ['_lamda1', '_lamda2', '_lamda3']
-
-alternative = ['',\
-               '_alt',\
-               '_debug',\
-               '_aliasing',\
-               '_pseudo-tagging',\
-               '_theta',\
-               '_dynamic-threshold']
-
-dyn_size = ['', '_dyn4', '_dyn7']
-
-bp_type = bp_types[6]
-
-bp_param = bp_params[4]
-
-index = indexing[0]
-
-lr = lrs[0]
-
-alt = alternative[3]# + alternative[6]
-
-dyn = dyn_size[0]
-
 
 def out_dir_gen(opt):
     outdir = res_dir + 'my'
@@ -210,19 +165,19 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
 
         opt = some_extra_args
         if opt.bp_size != None:
-            options += ['--bp-size='+opt.bp_size]
+            options += ['--bp-size={}'.format(opt.bp_size)]
         if opt.bp_index_type != None:
-            options += ['--bp-index-type='+opt.bp_index_type]
+            options += ['--bp-index-type={}'.format(opt.bp_index_type)]
         if opt.bp_history_len != None:
-            options += ['--bp-history-len='+opt.bp_history_len]
+            options += ['--bp-history-len={}'.format(opt.bp_history_len)]
         if opt.bp_learning_rate != None:
-            options += ['--bp-learning-rate='+opt.bp_learning_rate]
+            options += ['--bp-learning-rate={}'.format(opt.bp_learning_rate)]
         if opt.bp_pseudo_tagging != None and opt.bp_pseudo_tagging != 0:
-            options += ['--bp-pseudo-tagging='+opt.bp_pseudo_tagging]
+            options += ['--bp-pseudo-tagging={}'.format(opt.bp_pseudo_tagging)]
         if opt.bp_dyn_thres != None:
-            options += ['--bp-dyn-thres='+opt.bp_dyn_thres]
+            options += ['--bp-dyn-thres={}'.format(opt.bp_dyn_thres)]
             if opt.bp_tc_bit != None:
-                options += ['--bp-tc-bit='+opt.bp_tc_bit]
+                options += ['--bp-tc-bit={}'.format(opt.bp_tc_bit)]
     else:
         assert False
 
@@ -238,6 +193,7 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
 
 def run(args):
     [benchmark, opt] = args
+    print(benchmark, opt)
     outdir = out_dir_gen(opt)
     outdir_b = pjoin(outdir, benchmark)
     if not os.path.isdir(outdir_b):

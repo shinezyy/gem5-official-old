@@ -18,14 +18,19 @@ def modifyO3CPUConfig(options, cpu):
     #if cpu.branchPred == MyPerceptron:
     if options.bp_size:
         cpu.branchPred.globalPredictorSize = options.bp_size
+        print('bp_size modified to', options.bp_size)
     if options.bp_index_type:
         cpu.branchPred.indexMethod = options.bp_index_type
+        print('bp_index_type modified to', options.bp_index_type)
     if options.bp_history_len:
         cpu.branchPred.sizeOfPerceptrons = options.bp_history_len
+        print('bp_history_len modified to', options.bp_history_len)
     if options.bp_learning_rate:
         cpu.branchPred.lamda = options.bp_learning_rate
-    if options.bp_pseudoTagging:
+        print('bp_lr modified to', options.bp_learning_rate)
+    if options.bp_pseudo_tagging:
         cpu.branchPred.pseudoTaggingBit = options.bp_pseudo_tagging
+        print('bp_pseudo_tagging modified to', options.bp_pseudo_tagging)
 
     #if opt.bp_dyn_thres:
      #   cpu.branchPred.dynamicThresholdBit = options.bp_dyn_thres
