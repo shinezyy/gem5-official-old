@@ -78,7 +78,8 @@ def get_output(target_str, l):
                     if 'gem5_out.txt' in f:
                         outdir = pjoin(root, f)
                         test.append(outdir)
-            res.append(test)
+            if len(test):
+                res.append(test)
 
     #print(res)
     return res
@@ -114,6 +115,7 @@ def write_csv(dir, data):
     csvfile.close()
 
 def plot(target_dir, data, type):
+    print('plotting target dir is' , target_dir)
     fig = plt.figure(figsize=(20,10))
     num_subfigs = 8
     count = 0
