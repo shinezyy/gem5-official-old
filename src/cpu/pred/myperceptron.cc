@@ -15,7 +15,7 @@
 #define COUNT 1
 #define ALIASING 1
 #define NU_RATIO 0
-
+#define TABLE_USAGE 1
 
 MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     : BPredUnit(params),
@@ -105,6 +105,10 @@ historyRegisterMask);
     addr_record.assign(globalPredictorSize, 0);
     history_record.assign(globalPredictorSize, 0);
 #endif
+
+#if TABLE_USAGE
+    index_count.assign(globalPredictorSize, 0);
+#endif
 }
 
 inline void
@@ -191,6 +195,16 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
     // Indexing
     index = getIndex(hType, branch_addr, thread_history);
     assert(index < globalPredictorSize);
+
+#if TABLE_USAGE
+    index_count[index] += 1;
+    if (count % 100000 == 0){
+        DPRINTFR(MYperceptron, "At %lluth lookup, table usage is:\n", count);
+        for (int i = 0; i < globalPredictorSize; i++)
+            DPRINTFR(MYperceptron, "index %d, %u lookups\n", i,
+                    index_count[i]);
+    }
+#endif
 
     // Bias term
     int out = weights[index][0];

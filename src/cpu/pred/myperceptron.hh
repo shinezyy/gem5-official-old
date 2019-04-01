@@ -104,6 +104,7 @@ class MyPerceptron : public BPredUnit{
         std::vector<bool> stat_perceptrons;
         std::vector<Addr> addr_record;
         std::vector<unsigned> history_record;
+        std::vector<unsigned> index_count;
 
 };
 
