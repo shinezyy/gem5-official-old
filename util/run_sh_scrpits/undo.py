@@ -2,7 +2,7 @@
 import os
 import shutil
 
-res_dir = "/home/glr/gem5/gem5-results"
+res_dir = "~/gem5/gem5-results"
 
 # Removes the latest result directory when called
 def main():

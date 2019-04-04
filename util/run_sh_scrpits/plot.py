@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 from os.path import join as pjoin
@@ -12,10 +13,11 @@ import numpy as np
 from enum import Enum
 from math import *
 
-res_dir = '/home/glr/gem5/gem5-results'
+res_dir = '~/gem5/gem5-results'
 
 unconf_pattern = re.compile(r'\d+%')
 alias_pattern  = re.compile(r'\d+!')
+usage_pattern  = re.compile(r'\d+#')
 
 total_bench = 22
 
@@ -23,6 +25,39 @@ class Type(Enum):
     unconf = 1
     alias = 2
     nu_ratio = 3
+    usage = 4
+
+def reverse_readline(filename: str, buf_size=16384):
+    """a generator that returns the lines of a file in reverse order"""
+    with open(filename) as fh:
+        segment = None
+        offset = 0
+        fh.seek(0, os.SEEK_END)
+        file_size = remaining_size = fh.tell()
+        while remaining_size > 0:
+            offset = min(file_size, offset + buf_size)
+            fh.seek(file_size - offset)
+            buffer = fh.read(min(remaining_size, buf_size))
+            remaining_size -= buf_size
+            lines = buffer.split('\n')
+            # the first line of the buffer is probably not a complete line so
+            # we'll save it and append it to the last line of the next buffer
+            # we read
+            if segment is not None:
+                # if the previous chunk starts right from the beginning of line
+                # do not concact the segment to the last line of new chunk
+                # instead, yield the segment first
+                if buffer[-1] is not '\n':
+                    lines[-1] += segment
+                else:
+                    yield segment
+            segment = lines[0]
+            for index in range(len(lines) - 1, 0, -1):
+                if len(lines[index]):
+                    yield lines[index]
+        # Don't yield None if the file was empty
+        if segment is not None:
+            yield segment
 
 # get the subdirectory last modified
 def get_latest_subdir(dir='.'):
@@ -81,7 +116,6 @@ def get_output(target_str, l):
             if len(test):
                 res.append(test)
 
-    #print(res)
     return res
 
 def extract_data(dir, pattern):
@@ -106,6 +140,24 @@ def extract_data(dir, pattern):
 
     out_txt.close()
 
+    return matrix
+
+def extract_data_usage(dir, pattern):
+    i = 0
+    matrix = []
+
+    print('Extract usage data from ', dir)
+    for line in reverse_readline(dir):
+        row = [8192 - i]
+        all_matches = pattern.findall(line)
+        for item in pattern.findall(line):
+            item = item[:-1]
+            row.append(float(item))
+
+            matrix.append(row)
+            i += 1
+        if len(matrix) > 8191:
+            break
     return matrix
 
 def write_csv(dir, data):
@@ -140,7 +192,7 @@ def plot(target_dir, data, type):
             plt.plot(mat[:,0], mat[:,1], label='< theta',   color='r')
             plt.plot(mat[:,0], mat[:,2], label='< theta/2', color='y')
             plt.plot(mat[:,0], mat[:,3], label='< theta/4', color='b')
-
+#
             plt.xlabel(name)
             plt.ylabel('percentage')
 
@@ -150,6 +202,11 @@ def plot(target_dir, data, type):
 
             plt.xlabel(name)
             plt.ylabel('number')
+        elif type == Type.usage:
+            plt.bar(range(len(mat[:,1])), np.sort(mat[:,1])[::-1], color='b')
+
+            plt.xlabel(name)
+            plt.ylabel('lookups')
 
 
         if count % num_subfigs == 0 or count == total_bench:
@@ -173,10 +230,19 @@ def per_test_process(out_dirs, type):
         first_row = ['', '']
         pattern = alias_pattern
         issue = 'alias'
+    elif type == Type.usage:
+        first_row = ['', '']
+        pattern = usage_pattern
+        issue = 'usage'
 
     for d in out_dirs:
+        matrix = []
 
-        matrix = extract_data(d, pattern)
+        # Too ugly
+        if type != Type.usage:
+            matrix = extract_data(d, pattern)
+        else:
+            matrix = extract_data_usage(d, pattern)
         matrix.insert(0, first_row)
 
         p = d.split('/')
@@ -194,7 +260,6 @@ def per_test_process(out_dirs, type):
     plot(target_dir, data, type)
 
 def get_unconfident_percent(target_str=None, latest=True):
-    pattern = unconf_pattern
     out_dirs = get_output(target_str, l=latest)
     interval = 100000
 
@@ -206,7 +271,6 @@ def get_unconfident_percent(target_str=None, latest=True):
 
 
 def get_num_aliasing(target_str=None, latest=True):
-    pattern = alias_pattern
     out_dirs = get_output(target_str, l=latest)
     interval = 100000
 
@@ -216,6 +280,16 @@ def get_num_aliasing(target_str=None, latest=True):
         for test in out_dirs:
             per_test_process(test, Type.alias)
 
+def get_table_usage(target_str=None, latest=True):
+    out_dirs = get_output(target_str, l=latest)
+    interval = 100000
+
+    if latest:
+        per_test_process(out_dirs, Type.usage)
+    else:
+        for test in out_dirs:
+            per_test_process(test, Type.usage)
+
 def main():
 
     parser = argparse.ArgumentParser(usage='test of argparse')
@@ -223,7 +297,9 @@ def main():
                         help='get output result of aliasing')
     parser.add_argument('-u', '--unconfident', action='store_true',
                         help='get output result of unconfident rate')
-    parser.add_argument('-d', '--specified-directory', action='store',
+    parser.add_argument('-t', '--table-usage', action='store_true',
+                        help='get output result of table usage')
+    parser.add_argument('-d', '--specified-directory', action='append',
                         help = 'specify the result dir')
     parser.add_argument('-e', '--entire', action='store_true',
                         default=False, help='get all results in the folder')
@@ -234,10 +310,14 @@ def main():
 
     print(latest)
 
-    if (args.aliasing):
-        get_num_aliasing(dir, latest)
-    if (args.unconfident):
-        get_unconfident_percent(dir, latest)
+    if len(args.specified_directory):
+        for dir in args.specified_directory:
+            if (args.aliasing):
+                get_num_aliasing(dir, latest)
+            if (args.unconfident):
+                get_unconfident_percent(dir, latest)
+            if (args.table_usage):
+                get_table_usage(dir, latest)
 
 if __name__ == '__main__':
     main()

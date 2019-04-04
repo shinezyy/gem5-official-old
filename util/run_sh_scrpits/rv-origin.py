@@ -19,7 +19,7 @@ debug_flag = 'MYperceptron'
 
 target_function = 'all_function_spec.txt'
 
-res_dir = '/home/glr/gem5/gem5-results/'
+res_dir = '~/gem5/gem5-results/'
 
 arch = 'RISCV'
 
@@ -250,7 +250,7 @@ def main():
         #exit()
         p.map(run, args)
     else:
-        run(benchmarks[0], opt)
+        run([benchmarks[0], opt])
 
 
 if __name__ == '__main__':

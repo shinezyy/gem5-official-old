@@ -198,10 +198,10 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 
 #if TABLE_USAGE
     index_count[index] += 1;
-    if (count % 100000 == 0){
+    if (count % 1000000 == 0){
         DPRINTFR(MYperceptron, "At %lluth lookup, table usage is:\n", count);
         for (int i = 0; i < globalPredictorSize; i++)
-            DPRINTFR(MYperceptron, "index %d, %u lookups\n", i,
+            DPRINTFR(MYperceptron, "index %d, %u# lookups\n", i,
                     index_count[i]);
     }
 #endif
