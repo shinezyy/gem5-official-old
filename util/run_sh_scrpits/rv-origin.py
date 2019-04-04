@@ -9,7 +9,7 @@ import time
 from os.path import join as pjoin
 from os.path import expanduser as uexp
 from multiprocessing import Pool
-#from pathos.multiprocessing import ProcessingPoll as Pool
+from multiprocessing import cpu_count
 import common as c
 import argparse
 
@@ -223,7 +223,10 @@ def main():
     if opt.num_threads:
         num_thread = opt.num_threads
     else:
-        num_thread = 4
+        if cpu_count() > 22:
+            num_thread = 22
+        else:
+            num_thread = int(cpu_count() / 2)
 
     benchmarks = []
 
