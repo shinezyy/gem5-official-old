@@ -19,7 +19,8 @@ debug_flag = 'MYperceptron'
 
 target_function = 'all_function_spec.txt'
 
-res_dir = '~/gem5/gem5-results/'
+home = os.getenv('HOME')
+res_dir = pjoin(home, 'gem5/gem5-results/')
 
 arch = 'RISCV'
 

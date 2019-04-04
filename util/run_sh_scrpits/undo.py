@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import os
+from os.path import join as pjoin
 import shutil
 
-res_dir = "~/gem5/gem5-results"
+home = os.getenv('HOME')
+res_dir = pjoin(home, "gem5/gem5-results")
 
 # Removes the latest result directory when called
 def main():

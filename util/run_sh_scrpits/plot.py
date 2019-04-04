@@ -13,7 +13,9 @@ import numpy as np
 from enum import Enum
 from math import *
 
-res_dir = '~/gem5/gem5-results'
+home = os.getenv('HOME')
+
+res_dir = pjoin(home,'gem5/gem5-results')
 
 unconf_pattern = re.compile(r'\d+%')
 alias_pattern  = re.compile(r'\d+!')
@@ -290,6 +292,15 @@ def get_table_usage(target_str=None, latest=True):
         for test in out_dirs:
             per_test_process(test, Type.usage)
 
+def process(args, dir, latest):
+    if (args.aliasing):
+        get_num_aliasing(dir, latest)
+    if (args.unconfident):
+        get_unconfident_percent(dir, latest)
+    if (args.table_usage):
+        get_table_usage(dir, latest)
+
+
 def main():
 
     parser = argparse.ArgumentParser(usage='test of argparse')
@@ -310,14 +321,11 @@ def main():
 
     print(latest)
 
-    if len(args.specified_directory):
+    if args.specified_directory:
         for dir in args.specified_directory:
-            if (args.aliasing):
-                get_num_aliasing(dir, latest)
-            if (args.unconfident):
-                get_unconfident_percent(dir, latest)
-            if (args.table_usage):
-                get_table_usage(dir, latest)
+            process(args, dir, latest)
+    else:
+        process(args, dir, latest)
 
 if __name__ == '__main__':
     main()
