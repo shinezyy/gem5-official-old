@@ -54,6 +54,11 @@ def parser_add_arguments(parser):
     parser.add_argument('--all-benchmarks', action='store_true',
                         help='Switch to run all 22 benchmarks')
 
+def run(command):
+    out = subprocess.check_output(command)
+    out_text = out.decode('utf-8')
+    print(out_text)
+
 def main():
     usage_str = '[-d | -a | -i | -b | -p | --dynamic-thres]'
     parser = argparse.ArgumentParser(usage=usage_str)
@@ -68,63 +73,63 @@ def main():
         num_thread = int(cpu_count() / 2)
     print('num thread is', num_thread)
 
-    rv_origin = sh.Command('./rv-origin.py')
+    rv_origin = './rv-origin.py'
 
-    options = []
+    options = [rv_origin]
 
     if opt.default:
-        rv_origin()
+        run(options)
     else:
-        options = []
+        options = [rv_origin]
         if opt.all:
             combinations = [[s, i, h, l, p, d, t] for s in size for i in index\
                     for h in hislen for l in lr for p in pseudo_tag\
                     for d in dyn_thres for t in tc_bit]
             for [s, i, h, l, p, d, t] in combinations:
-                options = ['--num-threads={}'.format(num_thread),
-                           '--bp-size={}'.format(s),
-                           '--bp-index-type={}'.format(i),
-                           '--bp-history-len={}'.format(h),
-                           '--bp-learning-rate={}'.format(l),
-                           '--bp-pseudo-tagging={}'.format(p),
-                           '--bp-dyn-thres={}'.format(d),
-                           '--bp-tc-bit={}'.format(t)]
+                options += ['--num-threads={}'.format(num_thread),
+                            '--bp-size={}'.format(s),
+                            '--bp-index-type={}'.format(i),
+                            '--bp-history-len={}'.format(h),
+                            '--bp-learning-rate={}'.format(l),
+                            '--bp-pseudo-tagging={}'.format(p),
+                            '--bp-dyn-thres={}'.format(d),
+                            '--bp-tc-bit={}'.format(t)]
                 if opt.all_benchmarks:
                     options += ['-a']
-                rv_origin(*options)
+                run(options)
         else:
             if opt.index:
                 for i in index:
-                    options = ['--num-threads={}'.format(num_thread),
-                               '--bp-index-type={}'.format(i)]
+                    options += ['--num-threads={}'.format(num_thread),
+                                '--bp-index-type={}'.format(i)]
                     if opt.all_benchmarks:
                         options += ['-a']
-                    rv_origin(*options)
+                    run(options)
             if opt.budget:
                 combinations = [[s, h] for s in size for h in hislen]
                 for [s, h] in combinations:
-                    options = ['--num-threads={}'.format(num_thread),
-                               '--bp-size={}'.format(s),
-                               '--bp-history-len={}'.format(h)]
+                    options += ['--num-threads={}'.format(num_thread),
+                                '--bp-size={}'.format(s),
+                                '--bp-history-len={}'.format(h)]
                     if opt.all_benchmarks:
                         options += ['-a']
-                    rv_origin(*options)
+                    run(options)
             if opt.pseudo_tagging:
                 for p in pseudo_tag:
-                    options = ['--num-threads={}'.format(num_thread),
-                               '--bp-pseudo-tagging={}'.format(p)]
+                    options += ['--num-threads={}'.format(num_thread),
+                                '--bp-pseudo-tagging={}'.format(p)]
                     if opt.all_benchmarks:
                         options += ['-a']
-                    rv_origin(*options)
+                    run(options)
             if opt.dynamic_thres:
                 combinations = [[d, t] for d in dyn_thres for t in tc_bit]
                 for [d, t] in combinations:
-                    options = ['--num-threads={}'.format(num_thread),
-                               '--bp-dyn-thres={}'.format(d),
-                               '--bp-tc-bit={}'.format(t)]
+                    options += ['--num-threads={}'.format(num_thread),
+                                '--bp-dyn-thres={}'.format(d),
+                                '--bp-tc-bit={}'.format(t)]
                     if opt.all_benchmarks:
                         options += ['-a']
-                    rv_origin(*options)
+                    run(options)
 
 
 

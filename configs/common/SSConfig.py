@@ -32,8 +32,8 @@ def modifyO3CPUConfig(options, cpu):
         cpu.branchPred.pseudoTaggingBit = options.bp_pseudo_tagging
         print('bp_pseudo_tagging modified to', options.bp_pseudo_tagging)
 
-    if opt.bp_dyn_thres:
+    if options.bp_dyn_thres:
         cpu.branchPred.dynamicThresholdBit = options.bp_dyn_thres
-        if opt.bp_tc_bit:
+        if options.bp_tc_bit:
             cpu.branchPred.thresholdCounterBit = options.bp_tc_bit
 
