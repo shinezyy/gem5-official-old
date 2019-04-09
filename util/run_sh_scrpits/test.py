@@ -21,9 +21,9 @@ index      = ['MODULO',\
               'PRIME_MODULO']
 hislen     = [32, 64]
 lr         = [1]
-pseudo_tag = [0, 6, 8]
-dyn_thres  = [0, 6, 8]
-tc_bit     = [0, 6, 7, 8]
+pseudo_tag = [6, 8]
+dyn_thres  = [6, 8]
+tc_bit     = [6, 7, 8]
 
 params = [size, index, hislen, lr, pseudo_tag, dyn_thres, tc_bit]
 
@@ -37,14 +37,26 @@ def parser_add_arguments(parser):
     group.add_argument('-a', '--all', action='store_true',
                         help='Run with all possible combination of params')
 
-    parser.add_argument('-i', '--index', action='store_true',
-                        help='Run with all index methods')
+    combs = parser.add_mutually_exclusive_group()
+
+    combs.add_argument('-i', '--index', action='store_true',
+                       help='Run with all index methods')
+
+    combs.add_argument('-b', '--budget', action='store_true',
+                       help='Run with all sizes and hislens')
+
+    combs.add_argument('-p', '--pseudo-tagging', action='store_true',
+                       help='Running with all possible pseudo-tagging bits')
+
+    combs.add_argument('--dynamic-thres', action='store_true',
+                       help='Running with all dynamic threshold configs')
 
     parser.add_argument('--all-benchmarks', action='store_true',
                         help='Switch to run all 22 benchmarks')
 
 def main():
-    parser = argparse.ArgumentParser(usage='[-d | -a]')
+    usage_str = '[-d | -a | -i | -b | -p | --dynamic-thres]'
+    parser = argparse.ArgumentParser(usage=usage_str)
 
     parser_add_arguments(parser)
 
@@ -80,13 +92,41 @@ def main():
                 if opt.all_benchmarks:
                     options += ['-a']
                 rv_origin(*options)
-        elif opt.index:
-            for i in index:
-                options = ['--num-threads={}'.format(num_thread),
-                           '--bp-index-type={}'.format(i)]
-                if opt.all_benchmarks:
-                    options += ['-a']
-                rv_origin(*options)
+        else:
+            if opt.index:
+                for i in index:
+                    options = ['--num-threads={}'.format(num_thread),
+                               '--bp-index-type={}'.format(i)]
+                    if opt.all_benchmarks:
+                        options += ['-a']
+                    rv_origin(*options)
+            if opt.budget:
+                combinations = [[s, h] for s in size for h in hislen]
+                for [s, h] in combinations:
+                    options = ['--num-threads={}'.format(num_thread),
+                               '--bp-size={}'.format(s),
+                               '--bp-history-len={}'.format(h)]
+                    if opt.all_benchmarks:
+                        options += ['-a']
+                    rv_origin(*options)
+            if opt.pseudo_tagging:
+                for p in pseudo_tag:
+                    options = ['--num-threads={}'.format(num_thread),
+                               '--bp-pseudo-tagging={}'.format(p)]
+                    if opt.all_benchmarks:
+                        options += ['-a']
+                    rv_origin(*options)
+            if opt.dynamic_thres:
+                combinations = [[d, t] for d in dyn_thres for t in tc_bit]
+                for [d, t] in combinations:
+                    options = ['--num-threads={}'.format(num_thread),
+                               '--bp-dyn-thres={}'.format(d),
+                               '--bp-tc-bit={}'.format(t)]
+                    if opt.all_benchmarks:
+                        options += ['-a']
+                    rv_origin(*options)
+
+
 
 if __name__ == '__main__':
     main()

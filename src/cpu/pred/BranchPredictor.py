@@ -82,8 +82,8 @@ class MyPerceptron(BranchPredictor):
     cxx_class = 'MyPerceptron'
     cxx_header = "cpu/pred/myperceptron.hh"
 
-    globalPredictorSize = Param.Unsigned(8192, "Size of global Perdictor")
-    sizeOfPerceptrons   = Param.Unsigned(64, "Size of each Perceptron")
+    globalPredictorSize = Param.Unsigned(2048, "Size of global Perdictor")
+    sizeOfPerceptrons   = Param.Unsigned(32, "Size of each Perceptron")
     pseudoTaggingBit    = Param.Unsigned(8, "Numeber of pseudo-tagging bits")
     indexMethod         = Param.String('MODULO', "Indexing method")
     bitsPerWeight       = Param.Unsigned(10, "Bits used to store each weight")

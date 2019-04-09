@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 import os
 import sys
 from os.path import join as pjoin
@@ -144,13 +144,22 @@ def extract_data(dir, pattern):
 
     return matrix
 
+def get_bp_size(dir):
+    ind = dir.find("my")
+    #print("my is at index", ind)
+    size = int(dir[ind+7:ind+11])
+    #print("bp_size is ", size)
+    return size
+
 def extract_data_usage(dir, pattern):
     i = 0
     matrix = []
 
+    bp_size = get_bp_size(dir)
+
     print('Extract usage data from ', dir)
     for line in reverse_readline(dir):
-        row = [8192 - i]
+        row = [bp_size - i]
         all_matches = pattern.findall(line)
         for item in pattern.findall(line):
             item = item[:-1]
@@ -158,7 +167,7 @@ def extract_data_usage(dir, pattern):
 
             matrix.append(row)
             i += 1
-        if len(matrix) > 8191:
+        if len(matrix) > bp_size - 1:
             break
     return matrix
 

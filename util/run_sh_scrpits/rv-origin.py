@@ -25,9 +25,9 @@ res_dir = pjoin(home, 'gem5/gem5-results/')
 arch = 'RISCV'
 
 default_params = {\
-    'size': 8192,
+    'size': 2048,
     'index': 'MODULO',
-    'his_len': 64,
+    'his_len': 32,
     'lr': 1,
     'pseudo-tag': 0,
     'dyn-thres': 0,
