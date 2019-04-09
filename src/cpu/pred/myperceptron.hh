@@ -65,9 +65,6 @@ class MyPerceptron : public BPredUnit{
         // Threshold
         std::vector<unsigned> thetas;
 
-        // Number of thresholds
-        unsigned thresholdBits;
-
         // Weights of all perceptrons
         std::vector<std::vector<int>> weights;
 
@@ -82,6 +79,9 @@ class MyPerceptron : public BPredUnit{
 
         // Learning rate
         unsigned lambda;
+
+        // Number of thresholds
+        unsigned thresholdBits;
 
         // Dynamic threshold counter bits
         unsigned thresholdCounterBits;

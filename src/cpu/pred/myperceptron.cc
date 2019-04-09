@@ -7,9 +7,6 @@
 #include "base/intmath.hh"
 #include "debug/MYperceptron.hh"
 
-#define PSEUDOTAGGING false
-
-#define DYNAMIC_THRESHOLD false
 
 #define DEBUG 0
 #define COUNT 1
@@ -26,7 +23,9 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     pseudoTaggingBit(params->pseudoTaggingBit),
     indexMethod(params->indexMethod),
     bitsPerWeight(params->bitsPerWeight),
-    lambda(params->lamda)
+    lambda(params->lamda),
+    thresholdBits(params->dynamicThresholdBit),
+    thresholdCounterBits(params->thresholdCounterBit)
 {
     if (!isPowerOf2(globalPredictorSize)) {
         fatal("Invalid global predictor size, should be power of 2.\n");
@@ -48,26 +47,27 @@ historyRegisterMask);
     maxWeight = 1 << (bitsPerWeight - 1);
     maxWeight = 1 << 30;
 
-#if DYNAMIC_THRESHOLD
-    thresholdBits = 10;
-    thetas.assign(1 << thresholdBits, 1.93 * sizeOfPerceptrons + 14);
+    if (thresholdBits > 0){
+    // thresholdBits = 10;
+        thetas.assign(1 << thresholdBits, 1.93 * sizeOfPerceptrons + 14);
 
-    thresholdCounterBits = 7;
-    unsigned TC_initialValue = 1 << (thresholdCounterBits - 1);
+        // thresholdCounterBits = 7;
+        unsigned TC_initialValue = 1 << (thresholdCounterBits - 1);
 
-    SatCounter tc(thresholdCounterBits, TC_initialValue);
-    TC.assign(1 << thresholdBits, tc);
+        SatCounter tc(thresholdCounterBits, TC_initialValue);
+        TC.assign(1 << thresholdBits, tc);
     //SatCounter TC(thresholdCounterBits, TC_initialValue);
 
-    std::vector<SatCounter>::iterator sat_iter;
+        std::vector<SatCounter>::iterator sat_iter;
 
-    for (sat_iter = TC.begin(); sat_iter != TC.end(); sat_iter++)
-        (*sat_iter).reset();
-    DPRINTFR(MYperceptron, "counter init is %d, max is %d\n",
-        TC_initialValue, TC[0].readMax());
-#else
-    thetas.assign(1, 1.93 * sizeOfPerceptrons + 14);
-#endif
+        for (sat_iter = TC.begin(); sat_iter != TC.end(); sat_iter++)
+            (*sat_iter).reset();
+        DPRINTFR(MYperceptron, "counter init is %d, max is %d\n",
+            TC_initialValue, TC[0].readMax());
+    }
+    else{
+        thetas.assign(1, 1.93 * sizeOfPerceptrons + 14);
+    }
 
 
     DPRINTFR(MYperceptron, "maxWeight is %d, lambda is %d, theta is %d\n",
@@ -88,13 +88,13 @@ historyRegisterMask);
 
     DPRINTFR(MYperceptron, "Using %s\n", indexMethod);
 
-#if PSEUDOTAGGING
-    pweights.assign(globalPredictorSize, std::vector<int>\
+    if (pseudoTaggingBit > 0){
+        pweights.assign(globalPredictorSize, std::vector<int>\
             (pseudoTaggingBit, 0));
-    std::vector<unsigned>::iterator u_iter;
-    for (u_iter = thetas.begin(); u_iter != thetas.end(); u_iter++)
-        *u_iter += 1.93 * pseudoTaggingBit;
-#endif
+        std::vector<unsigned>::iterator u_iter;
+        for (u_iter = thetas.begin(); u_iter != thetas.end(); u_iter++)
+            *u_iter += 1.93 * pseudoTaggingBit;
+    }
 
 
 #if DEBUG
@@ -223,13 +223,13 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 #endif
 
 
-#if PSEUDOTAGGING
-    for (int j = 0; j < pseudoTaggingBit; j++)
-        if ((branch_addr >> (2 * (j + 1))) & 0x1)
-            out += pweights[index][j];
-        else
-            out -= pweights[index][j];
-#endif
+    if (pseudoTaggingBit > 0){
+        for (int j = 0; j < pseudoTaggingBit; j++)
+            if ((branch_addr >> (2 * (j + 1))) & 0x1)
+                out += pweights[index][j];
+            else
+                out -= pweights[index][j];
+    }
 
 
     // Use the sign bit as the result
@@ -237,11 +237,11 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 
 #if COUNT
     int t_index;
-#if DYNAMIC_THRESHOLD
-    t_index = getIndexTheta(branch_addr);
-#else
-    t_index = 0;
-#endif
+
+    if (thresholdBits > 0)
+        t_index = getIndexTheta(branch_addr);
+    else
+        t_index = 0;
 
     unsigned theta = thetas[t_index];
 
@@ -353,21 +353,22 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
             out -= weights[index][i+1];
     }
 
-#if PSEUDOTAGGING
-    for (int j = 0; j < pseudoTaggingBit; j++)
-        if ((branch_addr >> (2 * (j + 1))) & 0x1)
-            out += pweights[index][j];
-        else
-            out -= pweights[index][j];
-#endif
+    if (pseudoTaggingBit > 0){
+        for (int j = 0; j < pseudoTaggingBit; j++)
+            if ((branch_addr >> (2 * (j + 1))) & 0x1)
+                out += pweights[index][j];
+            else
+                out -= pweights[index][j];
+    }
 
     int t_index;
-#if DYNAMIC_THRESHOLD
     //DPRINTFR(MYperceptron,"theta is %d\n", theta);
-    t_index = getIndexTheta(branch_addr);
-#else
-    t_index = 0;
-#endif
+    //
+    if (thresholdBits > 0)
+        t_index = getIndexTheta(branch_addr);
+    else
+        t_index = 0;
+
     unsigned theta = thetas[t_index];
 
     //DPRINTFR(MYperceptron, "theta is %d\n", theta);
@@ -420,14 +421,14 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
             }
         }
 
-#if PSEUDOTAGGING
-        for (int j = 0; j < pseudoTaggingBit; j++){
-            if (((branch_addr >> (2 * (j + 1))) & 0x1) == taken)
-                pweights[index][j] += lambda;
-            else
-                pweights[index][j] -= lambda;
+        if (pseudoTaggingBit > 0){
+            for (int j = 0; j < pseudoTaggingBit; j++){
+                if (((branch_addr >> (2 * (j + 1))) & 0x1) == taken)
+                    pweights[index][j] += lambda;
+                else
+                    pweights[index][j] -= lambda;
+            }
         }
-#endif
 
     }
 
@@ -452,20 +453,20 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     }
 #endif
 
-#if DYNAMIC_THRESHOLD
-    if (squashed){
-        if (TC[t_index].increment()){
-            thetas[t_index] += 1;
-            TC[t_index].reset();
+    if (thresholdBits > 0){
+        if (squashed){
+            if (TC[t_index].increment()){
+                thetas[t_index] += 1;
+                TC[t_index].reset();
+            }
+        }
+        else if (abs(out) <= theta){
+            if (TC[t_index].decrement()){
+                thetas[t_index] -= 1;
+                TC[t_index].reset();
+            }
         }
     }
-    else if (abs(out) <= theta){
-        if (TC[t_index].decrement()){
-            thetas[t_index] -= 1;
-            TC[t_index].reset();
-        }
-    }
-#endif
 
 }
 
