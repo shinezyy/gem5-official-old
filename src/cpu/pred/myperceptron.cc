@@ -45,7 +45,7 @@ historyRegisterMask);
 
     // weights could be positive or negative
     maxWeight = 1 << (bitsPerWeight - 1);
-    maxWeight = 1 << 30;
+    //maxWeight = 1 << 30;
 
     if (thresholdBits > 0){
     // thresholdBits = 10;
@@ -399,25 +399,25 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 #endif
         if (taken){
             weights[index][0] += lambda;
-            //if (weights[index][0] > maxWeight)
-            //    weights[index][0] = maxWeight;
+            if (weights[index][0] > maxWeight)
+                weights[index][0] = maxWeight;
         }
         else{
             weights[index][0] -= lambda;
-            //if (weights[index][0] < -maxWeight)
-            //    weights[index][0] = -maxWeight;
+            if (weights[index][0] < -maxWeight)
+                weights[index][0] = -maxWeight;
         }
 
         for (int i = 0; i < sizeOfPerceptrons; i++){
             if (((global_history >> i) & 1) == taken){
                 weights[index][i+1] += lambda;
-                //if (weights[index][i+1] > maxWeight)
-                //    weights[index][i+1] = maxWeight;
+                if (weights[index][i+1] > maxWeight)
+                    weights[index][i+1] = maxWeight;
             }
             else{
                 weights[index][i+1] -= lambda;
-                //if (weights[index][i+1] < -maxWeight)
-                //    weights[index][i+1] = -maxWeight;
+                if (weights[index][i+1] < -maxWeight)
+                    weights[index][i+1] = -maxWeight;
             }
         }
 

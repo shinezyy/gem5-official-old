@@ -23,7 +23,7 @@ hislen     = [32, 64]
 lr         = [1]
 pseudo_tag = [6, 8]
 dyn_thres  = [6, 8]
-tc_bit     = [6, 7, 8]
+tc_bit     = [4, 5, 6, 7, 8]
 
 params = [size, index, hislen, lr, pseudo_tag, dyn_thres, tc_bit]
 

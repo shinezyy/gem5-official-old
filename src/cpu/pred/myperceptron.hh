@@ -75,7 +75,8 @@ class MyPerceptron : public BPredUnit{
         unsigned bitsPerWeight;
 
         // Maximum value of each weight
-        unsigned maxWeight;
+        // Do not use unsigned!!
+        int maxWeight;
 
         // Learning rate
         unsigned lambda;
