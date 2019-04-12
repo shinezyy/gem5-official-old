@@ -24,8 +24,9 @@ lr         = [1]
 pseudo_tag = [6, 8]
 dyn_thres  = [6, 8]
 tc_bit     = [4, 5, 6, 7, 8]
+w_bit      = [6, 7, 8]
 
-params = [size, index, hislen, lr, pseudo_tag, dyn_thres, tc_bit]
+params = [size, index, hislen, lr, pseudo_tag, dyn_thres, tc_bit, w_bit]
 
 def parser_add_arguments(parser):
 
@@ -82,10 +83,11 @@ def main():
     else:
         options = [rv_origin]
         if opt.all:
-            combinations = [[s, i, h, l, p, d, t] for s in size for i in index\
-                    for h in hislen for l in lr for p in pseudo_tag\
-                    for d in dyn_thres for t in tc_bit]
-            for [s, i, h, l, p, d, t] in combinations:
+            combinations = [[s, i, h, l, p, d, t, w] for s in size
+                    for i in index for h in hislen for l in lr
+                    for p in pseudo_tag for d in dyn_thres
+                    for t in tc_bit for w in w_bit]
+            for [s, i, h, l, p, d, t, w] in combinations:
                 options += ['--num-threads={}'.format(num_thread),
                             '--bp-size={}'.format(s),
                             '--bp-index-type={}'.format(i),
@@ -93,7 +95,8 @@ def main():
                             '--bp-learning-rate={}'.format(l),
                             '--bp-pseudo-tagging={}'.format(p),
                             '--bp-dyn-thres={}'.format(d),
-                            '--bp-tc-bit={}'.format(t)]
+                            '--bp-tc-bit={}'.format(t),
+                            '--bp-weight-bit={}'.format(w)]
                 if opt.all_benchmarks:
                     options += ['-a']
                 run(options)

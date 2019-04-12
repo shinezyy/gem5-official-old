@@ -31,7 +31,8 @@ default_params = {\
     'lr': 1,
     'pseudo-tag': 0,
     'dyn-thres': 0,
-    'tc-bit': 0
+    'tc-bit': 0,
+    'w_bit': 8
 }
 
 
@@ -73,6 +74,11 @@ def out_dir_gen(opt):
     else:
         outdir = outdir + '_tc' + str(default_params['tc-bit'])
 
+    if opt.bp_weight_bit:
+        outdir = outdir + '_w' + str(opt.bp_weight_bit)
+    else:
+        outdir = outdir + '_w' + str(default_params['w_bit'])
+
     print('out dir is', outdir)
 
     return outdir
@@ -111,6 +117,9 @@ def parser_add_arguments(parser):
 
     parser.add_argument('--bp-tc-bit', action='store', type=int,
                         help='valid when dyn-thres is not 0, counter bit')
+
+    parser.add_argument('--bp-weight-bit', action='store', type=int,
+                        help='Bist used to store each weight')
 
 def rv_origin(benchmark, some_extra_args, outdir_b):
 
@@ -179,6 +188,8 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             options += ['--bp-dyn-thres={}'.format(opt.bp_dyn_thres)]
             if opt.bp_tc_bit != None:
                 options += ['--bp-tc-bit={}'.format(opt.bp_tc_bit)]
+        if opt.bp_weight_bit:
+            options += ['--bp-weight-bit={}'.format(opt.bp_weight_bit)]
     else:
         assert False
 
