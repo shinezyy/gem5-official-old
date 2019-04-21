@@ -57,3 +57,16 @@ def addO3Options(parser):
     parser.add_option("--bp-tc-bit",
             action='store', type=int,
             help="Threshold counter bit, valid when dyn-thres > 0")
+
+    parser.add_option("--bp-weight-bit",
+            action='store', type=int,
+            help='Bits used to store weights')
+
+    parser.add_option("--use-ltage",
+            action='store_true',
+            help='Use L-TAGE as branch predictor')
+
+    parser.add_option("--use-tournament",
+            action='store_true',
+            help='Use Tournament as branch predictor')
+

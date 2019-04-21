@@ -79,6 +79,9 @@ def out_dir_gen(opt):
     else:
         outdir = outdir + '_w' + str(default_params['w_bit'])
 
+    # Override
+    if opt.output_dir:
+        outdir = res_dir + opt.output_dir
     print('out dir is', outdir)
 
     return outdir
@@ -95,6 +98,9 @@ def parser_add_arguments(parser):
 
     group.add_argument('-a', '--all', action='store_true', default=False,
                         help='Whether run all the benchmarks')
+
+    parser.add_argument('-o', '--output-dir', action='store', type=str,
+                        help='Specify the output directory')
 
     # params of perceptron based branch predictor
     parser.add_argument('--bp-size', action='store', type=int,
@@ -120,6 +126,16 @@ def parser_add_arguments(parser):
 
     parser.add_argument('--bp-weight-bit', action='store', type=int,
                         help='Bist used to store each weight')
+
+    # use other bps
+    use_bp = parser.add_mutually_exclusive_group()
+
+    use_bp.add_argument('--use-ltage', action='store_true',
+                        help='Use LTAGE as the branch predictor')
+
+    use_bp.add_argument('--use-tournament', action='store_true',
+                        help='Use Tournament as the branch predictor')
+
 
 def rv_origin(benchmark, some_extra_args, outdir_b):
 
@@ -174,22 +190,29 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
             '--num-PhysReg=256']
 
         opt = some_extra_args
-        if opt.bp_size != None:
-            options += ['--bp-size={}'.format(opt.bp_size)]
-        if opt.bp_index_type != None:
-            options += ['--bp-index-type={}'.format(opt.bp_index_type)]
-        if opt.bp_history_len != None:
-            options += ['--bp-history-len={}'.format(opt.bp_history_len)]
-        if opt.bp_learning_rate != None:
-            options += ['--bp-learning-rate={}'.format(opt.bp_learning_rate)]
-        if opt.bp_pseudo_tagging != None and opt.bp_pseudo_tagging != 0:
-            options += ['--bp-pseudo-tagging={}'.format(opt.bp_pseudo_tagging)]
-        if opt.bp_dyn_thres != None:
-            options += ['--bp-dyn-thres={}'.format(opt.bp_dyn_thres)]
-            if opt.bp_tc_bit != None:
-                options += ['--bp-tc-bit={}'.format(opt.bp_tc_bit)]
-        if opt.bp_weight_bit:
-            options += ['--bp-weight-bit={}'.format(opt.bp_weight_bit)]
+        if opt.use_ltage:
+            options += ['--use-ltage']
+        elif opt.use_tournament:
+            options += ['--use-tournament']
+        else:
+            if opt.bp_size != None:
+                options += ['--bp-size={}'.format(opt.bp_size)]
+            if opt.bp_index_type != None:
+                options += ['--bp-index-type={}'.format(opt.bp_index_type)]
+            if opt.bp_history_len != None:
+                options += ['--bp-history-len={}'.format(opt.bp_history_len)]
+            if opt.bp_learning_rate != None:
+                options +=\
+                    ['--bp-learning-rate={}'.format(opt.bp_learning_rate)]
+            if opt.bp_pseudo_tagging != None and opt.bp_pseudo_tagging != 0:
+                options +=\
+                    ['--bp-pseudo-tagging={}'.format(opt.bp_pseudo_tagging)]
+            if opt.bp_dyn_thres != None:
+                options += ['--bp-dyn-thres={}'.format(opt.bp_dyn_thres)]
+                if opt.bp_tc_bit != None:
+                    options += ['--bp-tc-bit={}'.format(opt.bp_tc_bit)]
+            if opt.bp_weight_bit:
+                options += ['--bp-weight-bit={}'.format(opt.bp_weight_bit)]
     else:
         assert False
 

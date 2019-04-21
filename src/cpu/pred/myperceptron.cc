@@ -9,10 +9,10 @@
 
 
 #define DEBUG 0
-#define COUNT 1
-#define ALIASING 1
+#define COUNT 0
+#define ALIASING 0
 #define NU_RATIO 0
-#define TABLE_USAGE 1
+#define TABLE_USAGE 0
 
 MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     : BPredUnit(params),
@@ -174,7 +174,9 @@ MyPerceptron::getIndexTheta(Addr branch_addr)
 bool
 MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 {
+#if DEBUG || COUNT || NU_RATIO || ALIASING || TABLE_USAGE
     static uint64_t count = 0;
+#endif
 #if COUNT
     static uint64_t less_than_theta = 0;
     static uint64_t less_than_half_of_theta = 0;

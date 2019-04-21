@@ -16,6 +16,14 @@ def modifyO3CPUConfig(options, cpu):
 
     # TODO: check whether is perceptronBP
     #if cpu.branchPred == MyPerceptron:
+    if options.use_ltage:
+        cpu.branchPred = Param.BranchPredictor(LTAGE(numThreads =
+            Parent.numThreads), "Branch Predictor")
+    if options.use_tournament:
+        cpu.branchPred = Param.BranchPredictor(LTAGE(numThreads =
+            Parent.numThreads), "Branch Predictor")
+
+
     if options.bp_size:
         cpu.branchPred.globalPredictorSize = options.bp_size
         print('bp_size modified to', options.bp_size)
@@ -36,4 +44,7 @@ def modifyO3CPUConfig(options, cpu):
         cpu.branchPred.dynamicThresholdBit = options.bp_dyn_thres
         if options.bp_tc_bit:
             cpu.branchPred.thresholdCounterBit = options.bp_tc_bit
+
+    if options.bp_weight_bit:
+        cpu.branchPred.bitsPerWeight = options.bp_weight_bit
 
