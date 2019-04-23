@@ -30,6 +30,9 @@ params = [size, index, hislen, lr, pseudo_tag, dyn_thres, tc_bit, w_bit]
 
 def parser_add_arguments(parser):
 
+    parser.add_argument('-n', '--num-threads', action='store',
+                        help='Run with n threads')
+
     group = parser.add_mutually_exclusive_group()
 
     group.add_argument('-d', '--default', action='store_true',
@@ -68,7 +71,9 @@ def main():
 
     opt = parser.parse_args()
 
-    if cpu_count() / 2 >= num_bench:
+    if opt.num_threads:
+        num_thread = opt.num_threads
+    elif cpu_count() / 2 >= num_bench:
         num_thread = 22
     else:
         num_thread = int(cpu_count() / 2)
