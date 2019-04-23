@@ -85,27 +85,73 @@ LTAGE::LTAGE(const LTAGEParams *params)
                     + 0.5);
     }
 
-    tagWidths[1] = minTagWidth;
-    tagWidths[2] = minTagWidth;
-    tagWidths[3] = minTagWidth + 1;
-    tagWidths[4] = minTagWidth + 1;
-    tagWidths[5] = minTagWidth + 2;
-    tagWidths[6] = minTagWidth + 3;
-    tagWidths[7] = minTagWidth + 4;
-    tagWidths[8] = minTagWidth + 5;
-    tagWidths[9] = minTagWidth + 5;
-    tagWidths[10] = minTagWidth + 6;
-    tagWidths[11] = minTagWidth + 7;
-    tagWidths[12] = minTagWidth + 8;
+// 256Kbits Budget
+// minTagWidth = 7
+//    tagWidths[1] = minTagWidth;
+//    tagWidths[2] = minTagWidth;
+//    tagWidths[3] = minTagWidth + 1;
+//    tagWidths[4] = minTagWidth + 1;
+//    tagWidths[5] = minTagWidth + 2;
+//    tagWidths[6] = minTagWidth + 3;
+//    tagWidths[7] = minTagWidth + 4;
+//    tagWidths[8] = minTagWidth + 5;
+//    tagWidths[9] = minTagWidth + 5;
+//    tagWidths[10] = minTagWidth + 6;
+//    tagWidths[11] = minTagWidth + 7;
+//    tagWidths[12] = minTagWidth + 8;
 
-    for (int i = 1; i <= 2; i++)
+// logSizeTagTables = 11
+//    for (int i = 1; i <= 2; i++)
+//        tagTableSizes[i] = logSizeTagTables - 1;
+//    for (int i = 3; i <= 6; i++)
+//        tagTableSizes[i] = logSizeTagTables;
+//    for (int i = 7; i <= 10; i++)
+//        tagTableSizes[i] = logSizeTagTables - 1;
+//    for (int i = 11; i <= 12; i++)
+//        tagTableSizes[i] = logSizeTagTables - 2;
+
+// 128Kbits Budget
+// minTageWidth = 7
+//    tagWidths[1] = minTagWidth;
+//    tagWidths[2] = minTagWidth + 1;
+//    tagWidths[3] = minTagWidth + 2;
+//    tagWidths[4] = minTagWidth + 3;
+//    tagWidths[5] = minTagWidth + 4;
+//    tagWidths[6] = minTagWidth + 4;
+//    tagWidths[7] = minTagWidth + 5;
+//    tagWidths[8] = minTagWidth + 6;
+
+// logSizeTagTables = 10
+//    for (int i = 1; i <= 1; i++)
+//        tagTableSizes[i] = logSizeTagTables - 1;
+//    for (int i = 2; i <= 4; i++)
+//        tagTableSizes[i] = logSizeTagTables;
+//    for (int i = 5; i <= 5; i++)
+//        tagTableSizes[i] = logSizeTagTables + 1;
+//    for (int i = 6; i <= 6; i++)
+//        tagTableSizes[i] = logSizeTagTables;
+//    for (int i = 7; i <= 7; i++)
+//        tagTableSizes[i] = logSizeTagTables - 1;
+//    for (int i = 8; i <= 8; i++)
+//        tagTableSizes[i] = logSizeTagTables - 2;
+
+// 64Kbits Budget
+// minTagWidth = 8
+    tagWidths[1] = minTagWidth;
+    tagWidths[2] = minTagWidth + 1;
+    tagWidths[3] = minTagWidth + 2;
+    tagWidths[4] = minTagWidth + 2;
+    tagWidths[5] = minTagWidth + 3;
+
+// logSizeTagTables = 10
+    for (int i = 1; i <= 1; i++)
         tagTableSizes[i] = logSizeTagTables - 1;
-    for (int i = 3; i <= 6; i++)
+    for (int i = 2; i <= 3; i++)
         tagTableSizes[i] = logSizeTagTables;
-    for (int i = 7; i <= 10; i++)
+    for (int i = 4; i <= 5; i++)
         tagTableSizes[i] = logSizeTagTables - 1;
-    for (int i = 11; i <= 12; i++)
-        tagTableSizes[i] = logSizeTagTables - 2;
+
+
 
     for (auto& history : threadHistory) {
         history.computeIndices = new FoldedHistory[nHistoryTables+1];

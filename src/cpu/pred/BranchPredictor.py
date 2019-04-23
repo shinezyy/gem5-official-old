@@ -104,12 +104,13 @@ class TournamentBP(BranchPredictor):
     cxx_class = 'TournamentBP'
     cxx_header = "cpu/pred/tournament.hh"
 
-    localPredictorSize = Param.Unsigned(2048, "Size of local predictor")
+    localPredictorSize = Param.Unsigned(2048/2, "Size of local predictor")
     localCtrBits = Param.Unsigned(2, "Bits per counter")
-    localHistoryTableSize = Param.Unsigned(2048, "size of local history table")
-    globalPredictorSize = Param.Unsigned(8192, "Size of global predictor")
+    localHistoryTableSize = Param.Unsigned(2048/2,
+                                     "size of local history table")
+    globalPredictorSize = Param.Unsigned(8192/2, "Size of global predictor")
     globalCtrBits = Param.Unsigned(2, "Bits per counter")
-    choicePredictorSize = Param.Unsigned(8192, "Size of choice predictor")
+    choicePredictorSize = Param.Unsigned(8192/2, "Size of choice predictor")
     choiceCtrBits = Param.Unsigned(2, "Bits of choice counters")
 
 
@@ -128,17 +129,17 @@ class LTAGE(BranchPredictor):
     cxx_class = 'LTAGE'
     cxx_header = "cpu/pred/ltage.hh"
 
-    logSizeBiMP = Param.Unsigned(14, "Log size of Bimodal predictor in bits")
+    logSizeBiMP = Param.Unsigned(13, "Log size of Bimodal predictor in bits")
     logRatioBiModalHystEntries = Param.Unsigned(2,
         "Log num of prediction entries for a shared hysteresis bit " \
         "for the Bimodal")
-    logSizeTagTables = Param.Unsigned(11, "Log size of tag table in LTAGE")
-    logSizeLoopPred = Param.Unsigned(8, "Log size of the loop predictor")
-    nHistoryTables = Param.Unsigned(12, "Number of history tables")
+    logSizeTagTables = Param.Unsigned(10, "Log size of tag table in LTAGE")
+    logSizeLoopPred = Param.Unsigned(6, "Log size of the loop predictor")
+    nHistoryTables = Param.Unsigned(5, "Number of history tables")
     tagTableCounterBits = Param.Unsigned(3, "Number of tag table counter bits")
     histBufferSize = Param.Unsigned(2097152,
             "A large number to track all branch histories(2MEntries default)")
     minHist = Param.Unsigned(4, "Minimum history size of LTAGE")
     maxHist = Param.Unsigned(640, "Maximum history size of LTAGE")
-    minTagWidth = Param.Unsigned(7, "Minimum tag size in tag tables")
+    minTagWidth = Param.Unsigned(8, "Minimum tag size in tag tables")
 
