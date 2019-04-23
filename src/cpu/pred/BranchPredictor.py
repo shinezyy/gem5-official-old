@@ -84,12 +84,12 @@ class MyPerceptron(BranchPredictor):
 
     globalPredictorSize = Param.Unsigned(2048, "Size of global Perdictor")
     sizeOfPerceptrons   = Param.Unsigned(32, "Size of each Perceptron")
-    pseudoTaggingBit    = Param.Unsigned(8, "Numeber of pseudo-tagging bits")
+    pseudoTaggingBit    = Param.Unsigned(0, "Numeber of pseudo-tagging bits")
     indexMethod         = Param.String('MODULO', "Indexing method")
     bitsPerWeight       = Param.Unsigned(8, "Bits used to store each weight")
     lamda               = Param.Unsigned(1, "Learning rate")
-    dynamicThresholdBit = Param.Unsigned(6, "Log of number of thresholds")
-    thresholdCounterBit = Param.Unsigned(7, "Bits used to store TC")
+    dynamicThresholdBit = Param.Unsigned(0, "Log of number of thresholds")
+    thresholdCounterBit = Param.Unsigned(0, "Bits used to store TC")
 
 class PathPerceptron(BranchPredictor):
     type = 'PathPerceptron'

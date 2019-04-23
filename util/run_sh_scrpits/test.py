@@ -14,12 +14,12 @@ import subprocess
 num_bench = 22
 
 
-size       = [2048, 4096, 8192]
+size       = [512, 1024, 2048]
 index      = ['MODULO',\
               'BITWISE_XOR',\
               'PRIME_DISPLACEMENT',\
               'PRIME_MODULO']
-hislen     = [32, 64]
+hislen     = [8, 16, 32]
 lr         = [1]
 pseudo_tag = [6, 8]
 dyn_thres  = [6, 8]

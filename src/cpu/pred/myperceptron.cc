@@ -9,10 +9,10 @@
 
 
 #define DEBUG 0
-#define COUNT 0
-#define ALIASING 0
+#define COUNT 1
+#define ALIASING 1
 #define NU_RATIO 0
-#define TABLE_USAGE 0
+#define TABLE_USAGE 1
 
 MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     : BPredUnit(params),
@@ -27,9 +27,9 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     thresholdBits(params->dynamicThresholdBit),
     thresholdCounterBits(params->thresholdCounterBit)
 {
-    if (!isPowerOf2(globalPredictorSize)) {
-        fatal("Invalid global predictor size, should be power of 2.\n");
-    }
+    //if (!isPowerOf2(globalPredictorSize)) {
+    //    fatal("Invalid global predictor size, should be power of 2.\n");
+    //}
 
     historyRegisterMask = mask(globalHistoryBits);
 
@@ -136,7 +136,8 @@ MyPerceptron::getIndex(hash_type type, Addr branch_addr,
         uint64_t global_history)
 {
     if (type == MODULO)
-        return (branch_addr >> 2) & historyRegisterMask;
+        //return (branch_addr >> 2) & historyRegisterMask;
+        return (branch_addr >> 2) % globalPredictorSize;
     else if (type == BITWISE_XOR){
         uint64_t x = branch_addr >> 2;
         uint64_t y = branch_addr >> (2 + globalHistoryBits);
