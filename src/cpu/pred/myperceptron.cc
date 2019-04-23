@@ -144,19 +144,21 @@ MyPerceptron::getIndex(hash_type type, Addr branch_addr,
         //uint64_t g = global_history;
         //g ^= global_history >> globalHistoryBits;
         //g ^= global_history >> (globalHistoryBits * 2);
-        return (x ^ y ^ global_history) & historyRegisterMask;
+        return (x ^ y) & historyRegisterMask;
     }
     else if (type == PRIME_DISPLACEMENT){
         uint64_t T = branch_addr >> (2 + globalHistoryBits);
-        uint64_t x = branch_addr >> 2;
+        uint64_t x = (branch_addr >> 2) & historyRegisterMask;
         // A prime number
-        uint64_t p = 8209;
+        uint64_t p = 17;
 
-        uint64_t g = global_history;
-        g ^= global_history >> globalHistoryBits;
-        g ^= global_history >> (2 * globalHistoryBits);
+        return (T * p + x) & historyRegisterMask;
 
-        return ((T * p + x) ^ g) & historyRegisterMask;
+        //uint64_t g = global_history;
+        //g ^= global_history >> globalHistoryBits;
+        //g ^= global_history >> (2 * globalHistoryBits);
+
+        //return ((T * p + x) ^ g) & historyRegisterMask;
     }
     else if (type == PRIME_MODULO){
         uint64_t p = 8209;
