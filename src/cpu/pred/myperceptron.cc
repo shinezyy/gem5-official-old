@@ -11,7 +11,7 @@
 #define DEBUG 0
 #define COUNT 1
 #define ALIASING 1
-#define NU_RATIO 0
+#define NU_RATIO 1
 #define TABLE_USAGE 1
 
 MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
@@ -230,7 +230,7 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 
     if (pseudoTaggingBit > 0){
         for (int j = 0; j < pseudoTaggingBit; j++)
-            if ((branch_addr >> (2 * (j + 1))) & 0x1)
+            if ((branch_addr >> (globalHistoryBits + (j + 1) + 2)) & 0x1)
                 out += pweights[index][j];
             else
                 out -= pweights[index][j];
@@ -360,7 +360,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
     if (pseudoTaggingBit > 0){
         for (int j = 0; j < pseudoTaggingBit; j++)
-            if ((branch_addr >> (2 * (j + 1))) & 0x1)
+            if ((branch_addr >> (globalHistoryBits + (j + 1) + 2)) & 0x1)
                 out += pweights[index][j];
             else
                 out -= pweights[index][j];
@@ -428,10 +428,17 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
         if (pseudoTaggingBit > 0){
             for (int j = 0; j < pseudoTaggingBit; j++){
-                if (((branch_addr >> (2 * (j + 1))) & 0x1) == taken)
+                if (((branch_addr >> (globalHistoryBits+(j+2)+1)) & 0x1)
+                        == taken){
                     pweights[index][j] += lambda;
-                else
+                    if (pweights[index][j] > maxWeight)
+                        pweights[index][j] = maxWeight;
+                }
+                else{
                     pweights[index][j] -= lambda;
+                    if (pweights[index][j] < -maxWeight)
+                        pweights[index][j] = -maxWeight;
+                }
             }
         }
 
@@ -450,7 +457,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
         NU_correct++;
 
     if (count % interval == 0){
-        DPRINTFR(MYperceptron, "NU_RATIO: At %lluth update, NU_miss/NU_correct\
+        DPRINTFR(MYperceptron, "NU_RATIO: At %lluth ratio\
 =%f, theta=%u\n", count, float(NU_miss - NU_miss_temp) / \
 (NU_correct - NU_correct_temp), theta);
         NU_miss_temp = NU_miss;
