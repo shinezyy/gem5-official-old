@@ -20,6 +20,7 @@ res_dir = pjoin(home,'gem5/gem5-results')
 unconf_pattern = re.compile(r'\d+%')
 alias_pattern  = re.compile(r'\d+!')
 usage_pattern  = re.compile(r'\d+#')
+dalias_pattern = re.compile(r'\d+@')
 
 total_bench = 22
 
@@ -28,6 +29,7 @@ class Type(Enum):
     alias = 2
     nu_ratio = 3
     usage = 4
+    dalias = 5
 
 def reverse_readline(filename: str, buf_size=16384):
     """a generator that returns the lines of a file in reverse order"""
@@ -213,6 +215,11 @@ def plot(target_dir, data, type):
 
             plt.xlabel(name)
             plt.ylabel('number')
+        elif type == Type.dalias:
+            plt.plot(mat[:,0],mat[:,1], label='', color='b')
+
+            plt.xlabel(name)
+            plt.ylabel('number')
         elif type == Type.usage:
             plt.bar(range(len(mat[:,1])), np.sort(mat[:,1])[::-1], color='b')
 
@@ -241,6 +248,10 @@ def per_test_process(out_dirs, type):
         first_row = ['', '']
         pattern = alias_pattern
         issue = 'alias'
+    elif type == Type.dalias:
+        first_row = ['','']
+        pattern = dalias_pattern
+        issue = 'dalias'
     elif type == Type.usage:
         first_row = ['', '']
         pattern = usage_pattern
@@ -291,6 +302,16 @@ def get_num_aliasing(target_str=None, latest=True):
         for test in out_dirs:
             per_test_process(test, Type.alias)
 
+def get_num_daliasing(target_str=None, latest=True):
+    out_dirs = get_output(target_str, l=latest)
+    interval = 100000
+
+    if latest:
+        per_test_process(out_dirs, Type.dalias)
+    else:
+        for test in out_dirs:
+            per_test_process(test, Type.dalias)
+
 def get_table_usage(target_str=None, latest=True):
     out_dirs = get_output(target_str, l=latest)
     interval = 100000
@@ -308,6 +329,8 @@ def process(args, dir, latest):
         get_unconfident_percent(dir, latest)
     if (args.table_usage):
         get_table_usage(dir, latest)
+    if (args.destructive_aliasing):
+        get_num_daliasing(dir, latest)
 
 
 def main():
@@ -315,11 +338,13 @@ def main():
     parser = argparse.ArgumentParser(usage='test of argparse')
     parser.add_argument('-a', '--aliasing', action='store_true',
                         help='get output result of aliasing')
+    parser.add_argument('-d', '--destructive-aliasing', action='store_true',
+                        help='get output result of destructive aliasing')
     parser.add_argument('-u', '--unconfident', action='store_true',
                         help='get output result of unconfident rate')
     parser.add_argument('-t', '--table-usage', action='store_true',
                         help='get output result of table usage')
-    parser.add_argument('-d', '--specified-directory', action='append',
+    parser.add_argument('-s', '--specified-directory', action='append',
                         help = 'specify the result dir')
     parser.add_argument('-e', '--entire', action='store_true',
                         default=False, help='get all results in the folder')
