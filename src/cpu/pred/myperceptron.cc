@@ -441,7 +441,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
             dalias++;
     }
 
-    history_record[index] = thread_history;
+    history_record[index] = global_history;
     addr_record[index] = branch_addr;
     taken_record[index] = taken;
 

@@ -15,12 +15,11 @@ num_bench = 22
 
 
 size       = [512, 1024, 2048]
-index      = ['MODULO',\
-              'BITWISE_XOR',\
+index      = ['BITWISE_XOR',\
               'PRIME_DISPLACEMENT',\
-              'PRIME_MODULO']
-#hislen     = [8, 16, 32]
-hislen     = [20, 21, 22, 23, 24]
+              'PRIME_MODULO',\
+              'MODULO']
+hislen     = [8, 16, 32]
 lr         = [1]
 pseudo_tag = [4, 5, 6, 7, 8]
 dyn_thres  = [6, 8]

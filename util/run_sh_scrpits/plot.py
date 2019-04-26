@@ -323,6 +323,8 @@ def main():
                         help = 'specify the result dir')
     parser.add_argument('-e', '--entire', action='store_true',
                         default=False, help='get all results in the folder')
+    parser.add_argument('--no-plot', action='store_true',
+                        help='Do not plot')
 
     args = parser.parse_args()
     dir = args.specified_directory
