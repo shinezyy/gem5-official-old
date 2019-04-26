@@ -104,6 +104,7 @@ historyRegisterMask);
 #if ALIASING
     addr_record.assign(globalPredictorSize, 0);
     history_record.assign(globalPredictorSize, 0);
+    taken_record.assign(globalPredictorSize, false);
 #endif
 
 #if TABLE_USAGE
@@ -179,6 +180,7 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 {
 #if DEBUG || COUNT || NU_RATIO || ALIASING || TABLE_USAGE
     static uint64_t count = 0;
+    count++;
 #endif
 #if COUNT
     static uint64_t less_than_theta = 0;
@@ -250,7 +252,6 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 
     unsigned theta = thetas[t_index];
 
-    count++;
     c_temp++;
     if (abs(out) <= theta){
         ++less_than_theta;
@@ -283,20 +284,6 @@ DPRINTFR(MYperceptron, "At the %lluth lookup, %d%% less than theta(%d),\
     }
 #endif
 
-#if ALIASING
-    static uint64_t alias = 0;
-    count++;
-    if (branch_addr != addr_record[index])
-        alias++;
-
-    history_record[index] = thread_history;
-    addr_record[index] = branch_addr;
-
-    if (count % 100000 == 0){
-        DPRINTFR(MYperceptron, "%lluth Lookup: %llu! aliases\n", count, alias);
-        alias = 0;
-    }
-#endif
 
 
     BPHistory *history = new BPHistory;
@@ -443,6 +430,29 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
         }
 
     }
+
+#if ALIASING
+    static uint64_t alias = 0;
+    static uint64_t dalias = 0;
+
+    if (branch_addr != addr_record[index]){
+        alias++;
+        if (taken != taken_record[index])
+            dalias++;
+    }
+
+    history_record[index] = thread_history;
+    addr_record[index] = branch_addr;
+    taken_record[index] = taken;
+
+    if (count % 100000 == 0){
+        DPRINTFR(MYperceptron, "%lluth Lookup: %llu! aliases\n", count, alias);
+        DPRINTFR(MYperceptron, "%lluth Lookup: %llu@ daliases\n",count,dalias);
+        alias = 0;
+        dalias = 0;
+    }
+#endif
+
 
 #if NU_RATIO
 
