@@ -327,8 +327,17 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     assert(bp_history);
 
     // Get the global history of this thread
-    BPHistory *history = static_cast<BPHistory *>(bp_history);
-    unsigned global_history = history->globalHistory;
+    unsigned global_history;
+    if (!squashed){
+        // Due to speculative update, the correct
+        // history should be in bp_history
+        global_history = getGHR(tid, bp_history);
+    }
+    else{
+        // Previous squashing process retores
+        // the correct history to GHR
+        global_history = globalHistory[tid];
+    }
 
     // Index of the perceptron to visit
     int index;
