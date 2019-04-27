@@ -322,22 +322,26 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 #if DEBUG || NU_RATIO
     int interval = 10000;
 #endif
-    count++;
-
     assert(bp_history);
 
+    // Called during squash, update GHR with correct result and return
+    if (squashed){
+        globalHistory[tid] = (getGHR(tid, bp_history) << 1 | taken);
+        globalHistory[tid] &= historyRegisterMask;
+
+        return;
+    }
+
+    count++;
+
     // Get the global history of this thread
-    unsigned global_history;
-    if (!squashed){
-        // Due to speculative update, the correct
-        // history should be in bp_history
-        global_history = getGHR(tid, bp_history);
-    }
-    else{
-        // Previous squashing process retores
-        // the correct history to GHR
-        global_history = globalHistory[tid];
-    }
+    unsigned global_history = getGHR(tid, bp_history);
+
+    // Get the prediction
+    BPHistory *history = static_cast <BPHistory *>(bp_history);
+    bool prediction = history->globalPredTaken;
+
+    bool incorrect = taken != prediction;
 
     // Index of the perceptron to visit
     int index;
@@ -378,7 +382,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     //DPRINTFR(MYperceptron, "theta is %d\n", theta);
 
     // Updates if predicted incorrectly(squashed) or the output <= theta
-    if (squashed || (abs(out) <= theta)){
+    if (incorrect || (abs(out) <= theta)){
 #if DEBUG
         if (count % interval == 0){
             DPRINTFR(MYperceptron, "Updated for %llu times, weight is:\n",
@@ -397,8 +401,8 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
         }
         stat_perceptrons[index] = true;
 
-        DPRINTFR(MYperceptron, "out is %d, theta is %d, squashed is %d\n",
-                out, theta, squashed);
+        DPRINTFR(MYperceptron, "out is %d, theta is %d, incorrect is %d\n",
+                out, theta, incorrect);
 
 #endif
         if (taken){
@@ -441,13 +445,6 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
             }
         }
 
-        // Reupdate with the correct global history
-        if (squashed){
-            if (taken)
-                updateGlobalHistTaken(tid);
-            else
-                updateGlobalHistNotTaken(tid);
-        }
     }
 
 #if ALIASING
