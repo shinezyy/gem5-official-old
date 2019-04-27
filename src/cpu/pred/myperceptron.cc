@@ -7,6 +7,7 @@
 #include "base/intmath.hh"
 #include "debug/MYperceptron.hh"
 
+#define SPECULATIVE_UPDATE 1
 
 #define DEBUG 0
 #define COUNT 1
@@ -297,6 +298,8 @@ DPRINTFR(MYperceptron, "At the %lluth lookup, %d%% less than theta(%d),\
     else
         updateGlobalHistNotTaken(tid);
 
+#if SPECULATIVE_UPDATE
+#endif
     return taken;
 }
 
@@ -429,6 +432,13 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
             }
         }
 
+        // Reupdate with the correct global history
+        if (squashed){
+            if (taken)
+                updateGlobalHistTaken(tid);
+            else
+                updateGlobalHistNotTaken(tid);
+        }
     }
 
 #if ALIASING
