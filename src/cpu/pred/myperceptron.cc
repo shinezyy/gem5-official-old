@@ -492,7 +492,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 #endif
 
     if (thresholdBits > 0){
-        if (squashed){
+        if (incorrect){
             if (TC[t_index].increment()){
                 thetas[t_index] += 1;
                 TC[t_index].reset();
