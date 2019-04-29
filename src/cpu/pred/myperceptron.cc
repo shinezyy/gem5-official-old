@@ -453,9 +453,9 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     static uint64_t NU_correct = 0;
     static uint64_t NU_correct_temp = 0;
 
-    if (squashed)
+    if (incorrect)
         NU_miss++;
-    else if (abs(out) <= theta)
+    else if (unconfident)
         NU_correct++;
 
     if (count % interval == 0){
@@ -475,7 +475,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
                 TC[t_index].reset();
             }
         }
-        else if (abs(out) <= theta){
+        else if (unconfident){
             if (TC[t_index].decrement()){
                 thetas[t_index] -= 1;
                 TC[t_index].reset();
