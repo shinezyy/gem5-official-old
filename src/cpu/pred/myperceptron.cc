@@ -321,7 +321,8 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
     // Called during squash, update GHR with correct result and return
     if (squashed){
-        updateGlobalHist(tid, taken);
+        globalHistory[tid] = (getGHR(tid, bp_history) << 1 ) | taken;
+        globalHistory[tid] &= historyRegisterMask;
         return;
     }
 
