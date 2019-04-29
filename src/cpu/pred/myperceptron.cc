@@ -138,7 +138,7 @@ MyPerceptron::getIndex(hash_type type, Addr branch_addr,
         //uint64_t g = global_history;
         //g ^= global_history >> globalHistoryBits;
         //g ^= global_history >> (globalHistoryBits * 2);
-        return (x ^ y) & historyRegisterMask;
+        return (x ^ y) % globalPredictorSize;
     }
     else if (type == PRIME_DISPLACEMENT){
         uint64_t T = branch_addr >> (2 + globalHistoryBits);
@@ -146,7 +146,7 @@ MyPerceptron::getIndex(hash_type type, Addr branch_addr,
         // A prime number
         uint64_t p = 17;
 
-        return (T * p + x) & historyRegisterMask;
+        return (T * p + x) % globalPredictorSize;
 
         //uint64_t g = global_history;
         //g ^= global_history >> globalHistoryBits;
@@ -156,7 +156,7 @@ MyPerceptron::getIndex(hash_type type, Addr branch_addr,
     }
     else if (type == PRIME_MODULO){
         uint64_t p = 8209;
-        return ((branch_addr >> 2) % p) & historyRegisterMask;
+        return ((branch_addr >> 2) % p) % globalPredictorSize;
     }
     else
         fatal("Not implemented indexing method!\n");
