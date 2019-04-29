@@ -28,13 +28,8 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     thresholdBits(params->dynamicThresholdBit),
     thresholdCounterBits(params->thresholdCounterBit)
 {
-    //if (!isPowerOf2(globalPredictorSize)) {
-    //    fatal("Invalid global predictor size, should be power of 2.\n");
-    //}
 
     historyRegisterMask = mask(globalHistoryBits);
-
-    // theta = 1.93 * sizeOfPerceptrons + 14;
 
     weights.assign(globalPredictorSize, std::vector<int>\
             (sizeOfPerceptrons + 1, 0));
@@ -46,18 +41,18 @@ historyRegisterMask);
 
     // weights could be positive or negative
     maxWeight = 1 << (bitsPerWeight - 1);
-    //maxWeight = 1 << 30;
 
+    // Dynamic threshold
     if (thresholdBits > 0){
-    // thresholdBits = 10;
+        // Multiple thetas
         thetas.assign(1 << thresholdBits, 1.93 * sizeOfPerceptrons + 14);
 
-        // thresholdCounterBits = 7;
+        // Init TCs with medium value
         unsigned TC_initialValue = 1 << (thresholdCounterBits - 1);
 
+        // 2**thresholdBits TCs
         SatCounter tc(thresholdCounterBits, TC_initialValue);
         TC.assign(1 << thresholdBits, tc);
-    //SatCounter TC(thresholdCounterBits, TC_initialValue);
 
         std::vector<SatCounter>::iterator sat_iter;
 
@@ -74,6 +69,8 @@ historyRegisterMask);
     DPRINTFR(MYperceptron, "maxWeight is %d, lambda is %d, theta is %d\n",
             maxWeight, lambda, thetas[0]);
 
+
+    // Set indexing methods
     if (indexMethod == "MODULO")
         hType = MODULO;
     else if (indexMethod == "BITWISE_XOR")
@@ -89,10 +86,12 @@ historyRegisterMask);
 
     DPRINTFR(MYperceptron, "Using %s\n", indexMethod);
 
+    // Set pseudo tagging weights
     if (pseudoTaggingBit > 0){
         pweights.assign(globalPredictorSize, std::vector<int>\
             (pseudoTaggingBit, 0));
         std::vector<unsigned>::iterator u_iter;
+        // Weights are added, so thetas should also be larger
         for (u_iter = thetas.begin(); u_iter != thetas.end(); u_iter++)
             *u_iter += 1.93 * pseudoTaggingBit;
     }
@@ -114,16 +113,9 @@ historyRegisterMask);
 }
 
 inline void
-MyPerceptron::updateGlobalHistTaken(ThreadID tid)
+MyPerceptron::updateGlobalHist(ThreadID tid, bool taken)
 {
-    globalHistory[tid] = (globalHistory[tid] << 1) | 1;
-    globalHistory[tid] &= historyRegisterMask;
-}
-
-inline void
-MyPerceptron::updateGlobalHistNotTaken(ThreadID tid)
-{
-    globalHistory[tid] = (globalHistory[tid] << 1);
+    globalHistory[tid] = (globalHistory[tid] << 1) | taken;
     globalHistory[tid] &= historyRegisterMask;
 }
 
@@ -176,6 +168,33 @@ MyPerceptron::getIndexTheta(Addr branch_addr)
     return (branch_addr >> 2) & mask(thresholdBits);
 }
 
+int
+MyPerceptron::computeOutput(uint64_t history, int index, Addr addr)
+{
+    // Bias term
+    int out = weights[index][0];
+
+    // Weights
+    for (int i = 0; i < sizeOfPerceptrons; i++){
+        if ((history >> i) & 0x1){
+            out += weights[index][i+1];
+        }
+        else{
+            out -= weights[index][i+1];
+        }
+    }
+
+    // Pseudo-tagging weights
+    if (pseudoTaggingBit > 0){
+        for (int j = 0; j < pseudoTaggingBit; j++)
+            if ((addr >> (globalHistoryBits + (j + 1) + 2)) & 0x1)
+                out += pweights[index][j];
+            else
+                out -= pweights[index][j];
+    }
+    return out;
+}
+
 bool
 MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 {
@@ -195,7 +214,7 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
 #endif
 
     // Get the global history of this thread
-    unsigned thread_history = globalHistory[tid];
+    uint64_t thread_history = globalHistory[tid];
 
     // Index of the perceptron to visit
     int index;
@@ -214,31 +233,12 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
     }
 #endif
 
-    // Bias term
-    int out = weights[index][0];
-
-    for (int i = 0; i < sizeOfPerceptrons; i++){
-        if ((thread_history >> i) & 0x1){
-            out += weights[index][i+1];
-        }
-        else{
-            out -= weights[index][i+1];
-        }
-    }
 
 #if DEBUG
     DPRINTFR(MYperceptron, "Looking up index %d, out is %d\n", index, out);
 #endif
 
-
-    if (pseudoTaggingBit > 0){
-        for (int j = 0; j < pseudoTaggingBit; j++)
-            if ((branch_addr >> (globalHistoryBits + (j + 1) + 2)) & 0x1)
-                out += pweights[index][j];
-            else
-                out -= pweights[index][j];
-    }
-
+    int out = computeOutput(thread_history, index, branch_addr);
 
     // Use the sign bit as the result
     bool taken = (out >= 0);
@@ -293,13 +293,8 @@ DPRINTFR(MYperceptron, "At the %lluth lookup, %d%% less than theta(%d),\
     bp_history = (void *)history;
 
     // Speculative updates the GHR because of OoO
-    if (taken)
-        updateGlobalHistTaken(tid);
-    else
-        updateGlobalHistNotTaken(tid);
+    updateGlobalHist(tid, taken);
 
-#if SPECULATIVE_UPDATE
-#endif
     return taken;
 }
 
@@ -311,7 +306,7 @@ MyPerceptron::uncondBranch(ThreadID tid, Addr pc, void * &bp_history)
     history->globalPredTaken = true;
     history->globalUsed = true;
     bp_history = static_cast<void *>(history);
-    updateGlobalHistTaken(tid);
+    updateGlobalHist(tid, true);
 }
 
 void
@@ -326,9 +321,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
     // Called during squash, update GHR with correct result and return
     if (squashed){
-        globalHistory[tid] = (getGHR(tid, bp_history) << 1 | taken);
-        globalHistory[tid] &= historyRegisterMask;
-
+        updateGlobalHist(tid, taken);
         return;
     }
 
@@ -343,35 +336,17 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
     bool incorrect = taken != prediction;
 
-    // Index of the perceptron to visit
-    int index;
-
     // Indexing
-    index = getIndex(hType, branch_addr, global_history);
+    int index = getIndex(hType, branch_addr, global_history);
     assert(index < globalPredictorSize);
 
 
     // Calculate the output again
-    int out = weights[index][0];
+    int out = computeOutput(global_history, index, branch_addr);
 
-    for (int i = 0; i < sizeOfPerceptrons; i++){
-        if ((global_history >> i) & 0x1)
-            out += weights[index][i+1];
-        else
-            out -= weights[index][i+1];
-    }
-
-    if (pseudoTaggingBit > 0){
-        for (int j = 0; j < pseudoTaggingBit; j++)
-            if ((branch_addr >> (globalHistoryBits + (j + 1) + 2)) & 0x1)
-                out += pweights[index][j];
-            else
-                out -= pweights[index][j];
-    }
-
+    // Get theta
     int t_index;
-    //DPRINTFR(MYperceptron,"theta is %d\n", theta);
-    //
+    // if used dynamic threshold
     if (thresholdBits > 0)
         t_index = getIndexTheta(branch_addr);
     else
@@ -379,10 +354,10 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
 
     unsigned theta = thetas[t_index];
 
-    //DPRINTFR(MYperceptron, "theta is %d\n", theta);
+    bool unconfident = abs(out) <= theta;
 
     // Updates if predicted incorrectly(squashed) or the output <= theta
-    if (incorrect || (abs(out) <= theta)){
+    if (incorrect || unconfident){
 #if DEBUG
         if (count % interval == 0){
             DPRINTFR(MYperceptron, "Updated for %llu times, weight is:\n",
@@ -491,6 +466,7 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     }
 #endif
 
+    // Dynamic threshold training
     if (thresholdBits > 0){
         if (incorrect){
             if (TC[t_index].increment()){

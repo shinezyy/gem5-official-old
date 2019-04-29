@@ -90,9 +90,9 @@ class MyPerceptron : public BPredUnit{
         // Threshold counter
         std::vector<SatCounter> TC;
 
-        void updateGlobalHistTaken(ThreadID tid);
-        void updateGlobalHistNotTaken(ThreadID tid);
+        void updateGlobalHist(ThreadID tid, bool taken);
 
+        int computeOutput(uint64_t history, int index, Addr addr);
 
 
         struct BPHistory {
