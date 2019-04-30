@@ -10,9 +10,9 @@
 #define SPECULATIVE_UPDATE 1
 
 #define DEBUG 0
-#define COUNT 1
-#define ALIASING 1
-#define NU_RATIO 1
+#define COUNT 0
+#define ALIASING 0
+#define NU_RATIO 0
 #define TABLE_USAGE 1
 
 MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
@@ -223,15 +223,6 @@ MyPerceptron::lookup(ThreadID tid, Addr branch_addr, void * &bp_history)
     index = getIndex(hType, branch_addr, thread_history);
     assert(index < globalPredictorSize);
 
-#if TABLE_USAGE
-    index_count[index] += 1;
-    if (count % 1000000 == 0){
-        DPRINTFR(MYperceptron, "At %lluth lookup, table usage is:\n", count);
-        for (int i = 0; i < globalPredictorSize; i++)
-            DPRINTFR(MYperceptron, "index %d, %u# lookups\n", i,
-                    index_count[i]);
-    }
-#endif
 
 
 #if DEBUG
@@ -274,7 +265,7 @@ DPRINTFR(MYperceptron, "At the %lluth lookup, %d%% less than theta(%d),\
  (%d)\n",
                             count,100 * less_than_theta / count, theta,\
                             100 * less_than_half_of_theta / count, theta/2,\
-                            100 * less_than_quater_of_theta / count, theta/4,
+                            101 * less_than_quater_of_theta / count, theta/4,
                             100 * less_temp / c_temp, theta,\
                             100 * half_temp / c_temp, theta/2,\
                             100 * quater_temp / c_temp, theta/4);
@@ -422,6 +413,22 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
         }
 
     }
+    //
+    // Dynamic threshold training
+    if (thresholdBits > 0){
+        if (incorrect){
+            if (TC[t_index].increment()){
+                thetas[t_index] += 1;
+                TC[t_index].reset();
+            }
+        }
+        else if (unconfident){
+            if (TC[t_index].decrement()){
+                thetas[t_index] -= 1;
+                TC[t_index].reset();
+            }
+        }
+    }
 
 #if ALIASING
     static uint64_t alias = 0;
@@ -467,21 +474,15 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     }
 #endif
 
-    // Dynamic threshold training
-    if (thresholdBits > 0){
-        if (incorrect){
-            if (TC[t_index].increment()){
-                thetas[t_index] += 1;
-                TC[t_index].reset();
-            }
-        }
-        else if (unconfident){
-            if (TC[t_index].decrement()){
-                thetas[t_index] -= 1;
-                TC[t_index].reset();
-            }
-        }
+
+#if TABLE_USAGE
+    index_count[index] += 1;
+    DPRINTFR(MYperceptron, "branch_addr: 0x%x, index: %d, taken: %d\n"
+            , branch_addr, index, taken ? 1 : 0);
+    if (count % 100000 == 0){
+        DPRINTFR(MYperceptron, "At %lluth update\n", count);
     }
+#endif
 
 }
 
