@@ -90,6 +90,10 @@ class MyPerceptron(BranchPredictor):
     lamda               = Param.Unsigned(1, "Learning rate")
     dynamicThresholdBit = Param.Unsigned(0, "Log of number of thresholds")
     thresholdCounterBit = Param.Unsigned(0, "Bits used to store TC")
+    redundantBit        = Param.Unsigned(0,
+                            "n-bits to represent a history bit")
+    maxHisLen           = Param.Unsigned(128,
+                            "max record length of global his")
 
 class PathPerceptron(BranchPredictor):
     type = 'PathPerceptron'

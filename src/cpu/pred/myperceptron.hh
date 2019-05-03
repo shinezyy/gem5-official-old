@@ -35,15 +35,19 @@ class MyPerceptron : public BPredUnit{
     private:
 
         inline int getIndex(hash_type type, Addr branch_addr,\
-                uint64_t global_history);
+                uint8_t *global_history);
 
         inline int getIndexTheta(Addr branch_addr);
 
         // Number of perceptrons(or size of PHT)
         unsigned globalPredictorSize;
 
+        struct ThreadHistory{
+            uint8_t *globalHistory;
+        };
+
         // Global histories of all threads
-        std::vector<unsigned> globalHistory;
+        std::vector<ThreadHistory> threadHistory;
 
         // Number of bits used to index the perceptrons
         unsigned globalHistoryBits;
@@ -64,6 +68,7 @@ class MyPerceptron : public BPredUnit{
 
         // Threshold
         std::vector<unsigned> thetas;
+
 
         // Weights of all perceptrons
         std::vector<std::vector<int>> weights;
@@ -87,24 +92,43 @@ class MyPerceptron : public BPredUnit{
         // Dynamic threshold counter bits
         unsigned thresholdCounterBits;
 
-        // Threshold counter
+        // Whether to use redundant history, and how many bits
+        unsigned redundantBit;
+
+        unsigned maxHisLen;
+
+        // Threshold co*unter
         std::vector<SatCounter> TC;
+
+        void train(std::vector<int>& perceptron, std::vector<int>& pperceptron,
+                bool taken, uint8_t *global_history, Addr branch_addr);
+
+        void updateThreshold(int t_index, bool incorrect, bool unconfident);
 
         void updateGlobalHist(ThreadID tid, bool taken);
 
-        int computeOutput(uint64_t history, int index, Addr addr);
+        int computeOutput(uint8_t *history, int index, Addr addr);
+
+        uint8_t *redundantHistory(uint8_t *history);
+
 
 
         struct BPHistory {
-            unsigned globalHistory;
+            uint8_t *globalHistory;
             bool globalPredTaken;
             bool globalUsed;
+
+            BPHistory(unsigned hislen){
+                globalHistory = new uint8_t [hislen];
+            }
+
+            ~BPHistory(){
+                delete[] globalHistory;
+            }
         };
 
 // Below are vectors used for tuning
-        std::vector<bool> stat_perceptrons;
         std::vector<Addr> addr_record;
-        std::vector<unsigned> history_record;
         std::vector<bool> taken_record;
         std::vector<unsigned> index_count;
 

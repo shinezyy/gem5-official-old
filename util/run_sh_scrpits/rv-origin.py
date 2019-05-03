@@ -25,7 +25,7 @@ res_dir = pjoin(home, 'gem5/gem5-results/')
 arch = 'RISCV'
 
 default_params = {\
-    'size': 128,
+    'size': 256,
     'index': 'MODULO',
     'his_len': 16,
     'lr': 1,
@@ -79,6 +79,9 @@ def out_dir_gen(opt):
     else:
         outdir = outdir + '_w' + str(default_params['w_bit'])
 
+    if opt.bp_redundant_bit and opt.bp_redundant_bit > 1:
+        outdir = outdir + '_redund' + str(opt.bp_redundant_bit)
+
     # Override
     if opt.output_dir:
         outdir = res_dir + opt.output_dir
@@ -125,7 +128,10 @@ def parser_add_arguments(parser):
                         help='valid when dyn-thres is not 0, counter bit')
 
     parser.add_argument('--bp-weight-bit', action='store', type=int,
-                        help='Bist used to store each weight')
+                        help='Bits used to store each weight')
+
+    parser.add_argument('--bp-redundant-bit', action='store', type=int,
+                        help='Bits used to represent a history bit')
 
     # use other bps
     use_bp = parser.add_mutually_exclusive_group()
@@ -213,6 +219,9 @@ def rv_origin(benchmark, some_extra_args, outdir_b):
                     options += ['--bp-tc-bit={}'.format(opt.bp_tc_bit)]
             if opt.bp_weight_bit:
                 options += ['--bp-weight-bit={}'.format(opt.bp_weight_bit)]
+            if opt.bp_redundant_bit:
+                options +=['--bp-redundant-bit={}'.\
+                        format(opt.bp_redundant_bit)]
     else:
         assert False
 

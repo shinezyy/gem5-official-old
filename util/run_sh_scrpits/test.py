@@ -14,19 +14,20 @@ import subprocess
 num_bench = 22
 
 
-size       = [512, 1024, 2048]
+size       = [256, 512, 1024, 2048]
 index      = ['BITWISE_XOR',\
               'PRIME_DISPLACEMENT',\
               'PRIME_MODULO',\
               'MODULO']
-hislen     = [8, 16, 32]
+hislen     = [8, 16, 32, 64]
 lr         = [1]
 pseudo_tag = [4, 5, 6, 7, 8]
 dyn_thres  = [6, 8]
 tc_bit     = [4, 6, 8]
 w_bit      = [6, 7, 8]
+r_bit      = [4]
 
-params = [size, index, hislen, lr, pseudo_tag, dyn_thres, tc_bit, w_bit]
+params = [size, index, hislen, lr, pseudo_tag, dyn_thres, tc_bit, w_bit, r_bit]
 
 def parser_add_arguments(parser):
 

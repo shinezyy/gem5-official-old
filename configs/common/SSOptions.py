@@ -62,6 +62,10 @@ def addO3Options(parser):
             action='store', type=int,
             help='Bits used to store weights')
 
+    parser.add_option("--bp-redundant-bit",
+            action='store', type=int,
+            help='n-bits to represent a history bit')
+
     parser.add_option("--use-ltage",
             action='store_true',
             help='Use L-TAGE as branch predictor')

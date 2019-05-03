@@ -48,3 +48,5 @@ def modifyO3CPUConfig(options, cpu):
     if options.bp_weight_bit:
         cpu.branchPred.bitsPerWeight = options.bp_weight_bit
 
+    if options.bp_redundant_bit:
+        cpu.branchPred.redundantBit = options.bp_redundant_bit
