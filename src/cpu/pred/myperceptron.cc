@@ -201,7 +201,7 @@ MyPerceptron::redundantHistory(uint8_t *history)
                     H[j][i] ^= history[i + j];
             }
         }
-        delete H;
+        delete[] H;
     }
     // If not redundant, return history itself
     else{
@@ -244,7 +244,7 @@ MyPerceptron::computeOutput(uint8_t *history, int index, Addr addr)
             }
         }
         // Recycle memory if newed
-        delete input;
+        delete[] input;
     }
 
     // Pseudo-tagging weights
@@ -412,7 +412,7 @@ MyPerceptron::train(std::vector<int>& perceptron,
             }
         }
         // Recycle memory if newed
-        delete input;
+        delete[] input;
     }
 
     if (pseudoTaggingBit > 0){
