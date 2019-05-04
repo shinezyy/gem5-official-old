@@ -187,7 +187,8 @@ MyPerceptron::redundantHistory(uint8_t *history)
     uint8_t *res;
     if (redundantBit > 0){
         res = new uint8_t[sizeOfPerceptrons*redundantBit];
-        uint8_t **H = new uint8_t*[redundantBit];
+        //uint8_t **H = new uint8_t*[redundantBit];
+        uint8_t *H[redundantBit];
         // res layout:
         // H[rBit-1], H[rBit-2], ..., H[1], H[0]
         for (int i = 0; i < redundantBit; i++)
@@ -201,7 +202,7 @@ MyPerceptron::redundantHistory(uint8_t *history)
                     H[j][i] ^= history[i + j];
             }
         }
-        delete[] H;
+        //delete[] H;
     }
     // If not redundant, return history itself
     else{
@@ -565,6 +566,10 @@ MyPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
         DPRINTFR(MYperceptron, "At %lluth update\n", count);
     }
 #endif
+
+    if (!squashed){
+        delete history;
+    }
 
 }
 
