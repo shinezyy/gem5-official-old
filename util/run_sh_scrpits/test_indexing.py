@@ -8,18 +8,19 @@ import math as m
 rv_origin = './rv-origin.py'
 options = [rv_origin]
 
-size   = 128
-hislen = 127
-
-p_bits = [4, 6, 8, 10]
-print(p_bits)
+size   = [128, 256, 512]
+hislen = [59, 36]
+indexing = ['MODULO',\
+            'BITWISE_XOR',\
+            'PRIME_MODULO',\
+            'PRIME_DISPLACEMENT']
 
 num_threads = 6
 
-for i in range(len(p_bits)):
+for i in range(len(size)):
     options += ['--num-threads={}'.format(num_threads),
-                '--bp-size={}'.format(size),
-                '--bp-history-len={}'.format(hislen-p_bits[i]),
+                '--bp-size={}'.format(size[i]),
+                '--bp-history-len={}'.format(hislen[i]),
                 '--bp-pseudo-tagging={}'.format(p_bits[i]),
                 '-a']
     run(options)

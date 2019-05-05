@@ -3,16 +3,16 @@
 import sh
 import subprocess
 
-size   = [161, 267, 506, 624, 1248]
+size   = [141, 234, 442, 546, 1092]
 hislen = [28, 34, 36, 59, 59]
-w_bit  = [7, 7, 7, 7, 7]
+w_bit  = [8, 8, 8, 8, 8]
 
 def run(command):
     out = subprocess.check_output(command)
     out_text = out.decode('utf-8')
     print(out_text)
 
-num_thread = 12
+num_thread = 6
 
 rv_origin = './rv-origin.py'
 options = [rv_origin]
