@@ -29,6 +29,7 @@ MyPerceptron::MyPerceptron(const MyPerceptronParams *params)
     redundantBit(params->redundantBit),
     maxHisLen(params->maxHisLen)
 {
+    historyRegisterMask = mask(globalHistoryBits);
 
     for (auto& history : threadHistory){
         history.globalHistory = new uint8_t[maxHisLen];
