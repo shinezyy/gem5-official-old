@@ -74,3 +74,8 @@ def addO3Options(parser):
             action='store_true',
             help='Use Tournament as branch predictor')
 
+    parser.add_option("--use-ogb",
+            action='store_true',
+            help='Use OGB as branch predictor')
+
+

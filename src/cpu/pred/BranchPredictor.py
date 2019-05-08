@@ -147,3 +147,18 @@ class LTAGE(BranchPredictor):
     maxHist = Param.Unsigned(640, "Maximum history size of LTAGE")
     minTagWidth = Param.Unsigned(8, "Minimum tag size in tag tables")
 
+class OGBBP(BranchPredictor):
+    type = 'OGBBP'
+    cxx_class = 'OGBBP'
+    cxx_header = "cpu/pred/online_gradient_boosting.hh"
+
+    globalHistoryLenLog = Param.Unsigned(8, "global history length log")
+    globalHistoryLen = Param.Unsigned(256, "global history length")
+    treeHeight = Param.Unsigned(2, "base tree model height")
+    localHistoryLen = Param.Unsigned(10, "local history length")
+    tableSize = Param.Unsigned(512,
+            "table size for local history and predictor")
+    factorBits = Param.Unsigned(6, "bits for sigma")
+    nTrees = Param.Unsigned(8, "number of weak tree learners")
+    ctrBits = Param.Unsigned(3, "width of saturating counter")
+

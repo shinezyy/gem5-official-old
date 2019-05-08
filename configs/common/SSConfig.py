@@ -1,3 +1,5 @@
+from m5.objects import *
+
 def modifyO3CPUConfig(options, cpu):
     print('modifying O3 cpu config')
     if options.num_ROB:
@@ -17,11 +19,11 @@ def modifyO3CPUConfig(options, cpu):
     # TODO: check whether is perceptronBP
     #if cpu.branchPred == MyPerceptron:
     if options.use_ltage:
-        cpu.branchPred = Param.BranchPredictor(LTAGE(numThreads =
-            Parent.numThreads), "Branch Predictor")
+        cpu.branchPred = LTAGE()
     if options.use_tournament:
-        cpu.branchPred = Param.BranchPredictor(LTAGE(numThreads =
-            Parent.numThreads), "Branch Predictor")
+        cpu.branchPred = TournamentBP()
+    if options.use_ogb:
+        cpu.branchPred = OGBBP()
 
 
     if options.bp_size:

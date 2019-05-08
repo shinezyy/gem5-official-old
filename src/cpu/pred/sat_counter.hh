@@ -128,4 +128,82 @@ class SatCounter
     uint8_t counter;
 };
 
+class SignedSatCounter
+{
+  public:
+
+    /**
+     * Constructor for the counter.
+     * @param bits How many bits the counter will have.
+     */
+    explicit SignedSatCounter(uint32_t bits)
+            : initialVal(0),
+              maxVal((1 << bits) - 1),
+              minVal(-(1 << bits)),
+              counter(0)
+    { }
+
+    /**
+     * Constructor for the counter.
+     * @param bits How many bits the counter will have.
+     * @param initial_val Starting value for each counter.
+     */
+    SignedSatCounter(unsigned bits, int32_t initial_val)
+            : initialVal(initial_val),
+              maxVal((1 << bits) - 1),
+              minVal(-(1 << bits)),
+              counter(initial_val)
+    {
+        // Check to make sure initial value doesn't exceed the max
+        // counter value.
+        if (initial_val > maxVal || initial_val < minVal) {
+            fatal("BP: Initial counter value exceeds max size.");
+        }
+    }
+
+    /**
+     * Sets the number of bits.
+     */
+    void reset() { counter = initialVal; }
+
+    /**
+     * Increments the counter's current value.
+     */
+    bool increment()
+    {
+        if (counter < maxVal) {
+            ++counter;
+        }
+        return counter >= maxVal;
+    }
+
+    /**
+     * Decrements the counter's current value.
+     */
+    bool decrement()
+    {
+        if (counter > minVal) {
+            --counter;
+        }
+        return counter <= minVal;
+    }
+
+    /**
+     * Read the counter's value.
+     */
+    int32_t read() const
+    { return counter; }
+
+    bool positive() const {
+        return counter > 0;
+    }
+
+  private:
+    const int32_t initialVal;
+    const int32_t maxVal;
+    const int32_t minVal;
+    int32_t counter;
+};
+
+
 #endif // __CPU_PRED_SAT_COUNTER_HH__
