@@ -24,6 +24,8 @@ def modifyO3CPUConfig(options, cpu):
         cpu.branchPred = TournamentBP()
     if options.use_ogb:
         cpu.branchPred = OGBBP()
+    if options.use_nbbp:
+        cpu.branchPred = NBBP()
 
 
     if options.bp_size:

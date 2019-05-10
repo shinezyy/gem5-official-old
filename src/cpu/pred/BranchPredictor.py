@@ -163,3 +163,19 @@ class OGBBP(BranchPredictor):
     nLocal = Param.Unsigned(5, "number of weak tree learners")
     ctrBits = Param.Unsigned(2, "width of saturating counter")
 
+class NBBP(BranchPredictor):
+    type = 'NBBP'
+    cxx_class = 'NBBP'
+    cxx_header = "cpu/pred/naive_bayes.hh"
+
+    globalHistoryLenLog = Param.Unsigned(8, "global history length log")
+    globalHistoryLen = Param.Unsigned(256, "global history length")
+    localHistoryLen = Param.Unsigned(10, "local history length")
+
+    nLocalCounter = Param.Unsigned(10, "local history counter numbert")
+    nGlobalCounter = Param.Unsigned(20, "global history counter numbert")
+
+    tableSize = Param.Unsigned(512,
+            "table size for local history and predictor")
+    ctrBits = Param.Unsigned(5, "width of saturating counter")
+

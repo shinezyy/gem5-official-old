@@ -44,6 +44,8 @@ bool OGBBP::lookup(ThreadID tid, Addr branch_addr, void *&bp_bistory) {
 //        ogbe.probing = probe_old;
 //    }
     updateGHR(tid, result);
+    ogbe.localHistory <<= 1;
+    ogbe.localHistory[0] = result;
 
     return result;
 }

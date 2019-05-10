@@ -78,4 +78,7 @@ def addO3Options(parser):
             action='store_true',
             help='Use OGB as branch predictor')
 
+    parser.add_option("--use-nbbp",
+            action='store_true',
+            help='Use naive bayes as branch predictor')
 
