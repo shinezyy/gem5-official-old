@@ -169,10 +169,11 @@ class SignedSatCounter
     /**
      * Increments the counter's current value.
      */
-    bool increment()
+
+    bool increment(int32_t x = 1)
     {
         if (counter < maxVal) {
-            ++counter;
+            counter = std::min(maxVal, counter + x);
         }
         return counter >= maxVal;
     }
@@ -180,10 +181,10 @@ class SignedSatCounter
     /**
      * Decrements the counter's current value.
      */
-    bool decrement()
+    bool decrement(int32_t x = 1)
     {
         if (counter > minVal) {
-            --counter;
+            counter = std::max(minVal, counter - x);
         }
         return counter <= minVal;
     }

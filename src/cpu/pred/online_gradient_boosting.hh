@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <random>
 #include <string>
+#include <unordered_map>
 
 #include <boost/dynamic_bitset.hpp>
 
@@ -27,12 +28,15 @@ class OGBBP: public BPredUnit{
     void squash(ThreadID tid, void * bp_history) override;
     unsigned getGHR(ThreadID tid, void * bp_history) const override;
 
+    const uint32_t probeIndex = 310;
+
   private:
+
+    using myClock = std::chrono::high_resolution_clock;
+
+    myClock::time_point beginning;
+
     void updateGHR(ThreadID tid, bool taken);
-
-    std::random_device rd;
-
-    std::mt19937 mt;
 
     const uint32_t globalHistoryLenLog;
     const uint32_t globalHistoryLen;
@@ -49,20 +53,26 @@ class OGBBP: public BPredUnit{
 
     uint32_t InvalidTableIndex = static_cast<uint32_t>(~0);
 
+    uint64_t InvalidPredictionID = 0;
+
+    uint64_t probe_pred_id = 379500;
+
     struct BPHistory {
         boost::dynamic_bitset<> globalHistory;
         boost::dynamic_bitset<> localHistory;
         uint32_t tableIndex;
         bool predTaken;
+        const uint64_t predictionID;
 
         explicit BPHistory(boost::dynamic_bitset<> &ghr,
                            boost::dynamic_bitset<> local_history,
                            uint32_t tableIndex,
-                           bool taken)
+                           bool taken, uint64_t id)
                 : globalHistory(ghr),
                   localHistory(std::move(local_history)),
                   tableIndex(tableIndex),
-                  predTaken(taken)
+                  predTaken(taken),
+                  predictionID(id)
         {}
 
         ~BPHistory() = default;
@@ -76,58 +86,69 @@ class OGBBP: public BPredUnit{
                 : treeNodes(power(2, treeHeight) - 1),
                   leaves(power(2, treeHeight), SignedSatCounter(ctrBits, 0))
         {}
-
-        void reRand(std::mt19937 &mt, uint32_t l, uint32_t r);
     };
-
 
     struct OGBEntry {
         bool valid;
         const uint32_t localHistoryLen;
         const uint32_t globalHistoryLen;
         const uint32_t nTrees;
-        const uint32_t nLocal = 2;
+        const uint32_t nLocal;
         const uint32_t treeHeight;
-        const int32_t base;
-        const int32_t eta;
+        const float eta;
         const int32_t zoomFactor;
+
+        const std::string _name;
+
+        const std::string name() const {return _name;}
+
+        bool probing{false};
 
         SignedSatCounter baseValue;
 
         boost::dynamic_bitset<> localHistory;
         std::vector<Tree> trees;
-        std::vector<SignedSatCounter> sigma;
+        std::vector<SatCounter> sigma;
+        const int32_t sigma_deno;
 
-        OGBEntry (uint32_t localHistoryLen, uint32_t globalHistoryLen,
-                  uint32_t nTrees, uint32_t factorBits,
-                  uint32_t treeHeight, uint32_t ctrBits)
+        OGBEntry (uint32_t _localHistoryLen, uint32_t _globalHistoryLen,
+                  uint32_t _nTrees, uint32_t _nLocal, uint32_t _factorBits,
+                  uint32_t _treeHeight, uint32_t _ctrBits)
                 : valid(false),
-                  localHistoryLen(localHistoryLen),
-                  globalHistoryLen(globalHistoryLen),
-                  nTrees(nTrees),
-                  treeHeight(treeHeight),
-                  base(1),
-                  eta(6),
+                  localHistoryLen(_localHistoryLen),
+                  globalHistoryLen(_globalHistoryLen),
+                  nTrees(_nTrees),
+                  nLocal(_nLocal),
+                  treeHeight(_treeHeight),
+                  eta(0.07),
                   zoomFactor(static_cast<const int32_t>(
-                          (nTrees + 1) * power(2, ctrBits - 1))),
+                          (_nTrees + 1) * power(2, (_ctrBits - 1)/2))),
 
-                  baseValue(ctrBits, 0),
+                  _name("OGBEntry"),
+
+                  baseValue(_ctrBits, 0),
                   localHistory(localHistoryLen),
-                  trees(nTrees, Tree(treeHeight, ctrBits)),
-                  sigma(nTrees, SignedSatCounter(factorBits, 0))
+                  trees(_nTrees, Tree(_treeHeight, _ctrBits)),
+                  sigma(_nTrees, SatCounter(_factorBits, 0)),
+                  sigma_deno(static_cast<const int32_t>(power(2, _factorBits)))
         {}
 
-        void init(std::mt19937 &mt);
+        void init(myClock::time_point beginning);
 
         float predict(boost::dynamic_bitset<> &ghr);
 
-        void gradient_descent(boost::dynamic_bitset<> &ghr, bool taken);
+        void gradient_descent(BPHistory *history, bool taken);
     };
 
     std::vector<OGBEntry> table;
 
     uint32_t computeIndex(Addr addr);
 
+    uint64_t predictionID{1};
+
+    uint64_t misses{0};
+
+    std::map<Addr, uint32_t> misPredictions{};
 };
 
 #endif

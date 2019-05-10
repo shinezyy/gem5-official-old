@@ -102,7 +102,7 @@ BiModeBP::squash(ThreadID tid, void *bpHistory)
 /*
  * Here we lookup the actual branch prediction. We use the PC to
  * identify the bias of a particular branch, which is based on the
- * prediction in the choice array. A hash of the global history
+ * prediction in the choice array. A hash of the global history35492008823500
  * register and a branch's PC is used to index into both the taken
  * and not-taken predictors, which both present a prediction. The
  * choice array's prediction is used to select between the two

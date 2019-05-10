@@ -152,13 +152,14 @@ class OGBBP(BranchPredictor):
     cxx_class = 'OGBBP'
     cxx_header = "cpu/pred/online_gradient_boosting.hh"
 
-    globalHistoryLenLog = Param.Unsigned(8, "global history length log")
-    globalHistoryLen = Param.Unsigned(256, "global history length")
-    treeHeight = Param.Unsigned(2, "base tree model height")
+    globalHistoryLenLog = Param.Unsigned(7, "global history length log")
+    globalHistoryLen = Param.Unsigned(128, "global history length")
+    treeHeight = Param.Unsigned(1, "base tree model height")
     localHistoryLen = Param.Unsigned(10, "local history length")
     tableSize = Param.Unsigned(512,
             "table size for local history and predictor")
     factorBits = Param.Unsigned(6, "bits for sigma")
-    nTrees = Param.Unsigned(8, "number of weak tree learners")
-    ctrBits = Param.Unsigned(3, "width of saturating counter")
+    nTrees = Param.Unsigned(16, "number of weak tree learners")
+    nLocal = Param.Unsigned(5, "number of weak tree learners")
+    ctrBits = Param.Unsigned(2, "width of saturating counter")
 
