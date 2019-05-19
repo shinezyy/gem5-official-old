@@ -82,3 +82,6 @@ def addO3Options(parser):
             action='store_true',
             help='Use naive bayes as branch predictor')
 
+    parser.add_option("--use-zperceptron",
+            action='store_true',
+            help='Use zperceptron as branch predictor')

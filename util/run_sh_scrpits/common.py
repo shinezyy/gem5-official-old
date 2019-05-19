@@ -3,7 +3,7 @@ import sh
 from os.path import join as pjoin
 
 
-def avoid_repeated(func, outdir, *args, **kwargs):
+def avoid_repeated(func, outdir, binary=None, *args, **kwargs):
     func_name = func.__name__
 
     running_lock_name = 'running-{}'.format(func_name)
@@ -26,9 +26,15 @@ def avoid_repeated(func, outdir, *args, **kwargs):
     script_ts_file = pjoin(script_dir, ts_name)
     if not os.path.isfile(script_ts_file):
         sh.touch(script_ts_file)
-    script_ts = os.path.getmtime(script_ts_file)
 
-    if out_ts < script_ts:
+    newest = os.path.getmtime(script_ts_file)
+
+    if not binary is None:
+        binary_ts = os.path.getmtime(binary)
+        newest = max(binary_ts, newest)
+
+
+    if out_ts < newest:
         try:
             func(*args, **kwargs)
             sh.touch(out_ts_file)

@@ -179,3 +179,18 @@ class NBBP(BranchPredictor):
             "table size for local history and predictor")
     ctrBits = Param.Unsigned(5, "width of saturating counter")
 
+class ZPerceptron(BranchPredictor):
+    type = 'ZPerceptron'
+    cxx_class = 'ZPerceptron'
+    cxx_header = "cpu/pred/zperceptron.hh"
+
+    tableSize = Param.Unsigned(256, "Size of global Perdictor")
+    globalHistoryLen = Param.Unsigned(64, "global history length")
+    localHistoryLen = Param.Unsigned(1, "local history length")
+    ctrBits = Param.Unsigned(8, "width of saturating counter")
+
+    pseudoTaggingBit    = Param.Unsigned(0, "Numeber of pseudo-tagging bits")
+    lamda               = Param.Unsigned(1, "Learning rate")
+    # thresholdCounterBit = Param.Unsigned(0, "Bits used to store TC")
+
+
