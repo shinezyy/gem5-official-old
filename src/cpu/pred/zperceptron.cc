@@ -1,10 +1,12 @@
 #include "zperceptron.hh"
 
-//#include <iostream>
+#include <sys/cdefs.h>
+
 #include <fstream>
 
 #include "base/bitfield.hh"
 #include "base/intmath.hh"
+#include "debug/PrcpDump.hh"
 #include "debug/ZPerceptron.hh"
 
 using namespace boost;
@@ -17,7 +19,7 @@ ZPerceptron *ZPerceptronParams::create()
 void ZPerceptron::uncondBranch(ThreadID tid, Addr pc, void *&bp_history) {
     bp_history = new BPHistory(globalHistory[tid],
             emptyLocalHistory, InvalidTableIndex,
-            true, InvalidPredictionID, 0);
+            true, InvalidPredictionID, table.front().theta + 1);
     updateGHR(tid, true);
 }
 
@@ -60,7 +62,7 @@ ZPerceptron::ZPerceptron(const ZPerceptronParams *params)
           emptyLocalHistory(1),
           globalHistory(params->numThreads,
                   dynamic_bitset<>(globalHistoryLen)),
-          table(tableSize, NBEntry(params))
+          table(tableSize, Neuron(params))
 {
     uint32_t count = 0;
     for (auto &entry: table) {
@@ -71,10 +73,11 @@ ZPerceptron::ZPerceptron(const ZPerceptronParams *params)
 }
 
 bool ZPerceptron::lookup(ThreadID tid, Addr branch_addr, void *&bp_bistory) {
+    tryDump();
 
     uint32_t index = computeIndex(branch_addr);
     dynamic_bitset<> &ghr = globalHistory[tid];
-    NBEntry &entry = table.at(index);
+    Neuron &entry = table.at(index);
 
     if (entry.probing && Debug::ZPerceptron) {
         DPRINTF(ZPerceptron, "Inst[0x%llx] with Pred[%llu]\n",
@@ -100,7 +103,7 @@ void ZPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
     auto history = static_cast<BPHistory *>(bp_history);
 
     auto index = computeIndex(branch_addr);
-    NBEntry &entry = table.at(index);
+    Neuron &entry = table.at(index);
     assert(entry.valid);
 
     if (squashed) {
@@ -125,31 +128,56 @@ void ZPerceptron::update(ThreadID tid, Addr branch_addr, bool taken,
         DPRINTF(ZPerceptron, "New prediction:\n");
     }
     entry.predict(history->globalHistory);
-    if (entry.probing && Debug::ZPerceptron) {
-        std::cout << "New local: " << entry.localHistory << std::endl;
-    }
+//    if (entry.probing && Debug::ZPerceptron) {
+//        std::cout << "New local: " << entry.localHistory << std::endl;
+//    }
 
     delete history;
 }
 
+void ZPerceptron::dumpParameters() const{
+    int count = 0;
+    for (const auto &n: table) {
+        DPRINTFR(PrcpDump, "%d,", count++);
+        n.dump();
+        DPRINTFR(PrcpDump, "\n");
+    }
+}
+
+void ZPerceptron::tryDump() {
+    if (__glibc_unlikely(nextDumpTick == 0)) {
+        nextDumpTick = curTick() + 500*10000;
+    }
+    if (__glibc_unlikely(curTick() >= nextDumpTick)) {
+        DPRINTFR(PrcpDump, "==dump==\n");
+        dumpParameters();
+        nextDumpTick += 500*10000;
+    }
+}
 
 
-
-int32_t ZPerceptron::NBEntry::predict(boost::dynamic_bitset<> &ghr)
+int32_t ZPerceptron::Neuron::predict(boost::dynamic_bitset<> &ghr)
 {
     int32_t sum = weights.back().read(); // bias
     for (int i = 0; i < globalHistoryLen; i++) {
         sum += b2s(ghr[i]) * weights[i].read();
     }
+    if (probing) {
+        DPRINTFR(ZPerceptron, "sum: %d\n", sum);
+    }
     return sum;
 }
 
-void ZPerceptron::NBEntry::fit(BPHistory *bp_history, bool taken) {
+void ZPerceptron::Neuron::fit(BPHistory *bp_history, bool taken) {
 
 
     if (taken == bp_history->predTaken &&
         abs(bp_history->predictionValue) > theta) {
         return;
+    }
+    if (probing) {
+        DPRINTFR(ZPerceptron, "Old prediction: %d, theta: %d\n",
+                 bp_history->predictionValue, theta);
     }
 
     if (taken) {
@@ -165,7 +193,7 @@ void ZPerceptron::NBEntry::fit(BPHistory *bp_history, bool taken) {
     }
 }
 
-ZPerceptron::NBEntry::NBEntry(const ZPerceptronParams *params)
+ZPerceptron::Neuron::Neuron(const ZPerceptronParams *params)
          : globalHistoryLen(params->globalHistoryLen),
          localHistory(params->localHistoryLen),
          weights(globalHistoryLen, SignedSatCounter(params->ctrBits, 0)),
@@ -174,8 +202,14 @@ ZPerceptron::NBEntry::NBEntry(const ZPerceptronParams *params)
 {
 }
 
-int ZPerceptron::NBEntry::b2s(bool taken) {
+int ZPerceptron::Neuron::b2s(bool taken) {
     // 1 -> 1; 0 -> -1
     return (taken << 1) - 1;
+}
+
+void ZPerceptron::Neuron::dump() const{
+    for (const auto &w: weights) {
+        DPRINTFR(PrcpDump, "%d,", w.read());
+    }
 }
 

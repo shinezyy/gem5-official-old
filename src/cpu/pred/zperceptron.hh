@@ -17,7 +17,7 @@
 class ZPerceptron: public BPredUnit{
   public:
 
-    ZPerceptron(const ZPerceptronParams *params);
+    explicit ZPerceptron(const ZPerceptronParams *params);
     bool lookup(ThreadID tid, Addr branch_addr, void * &bp_bistory) override;
     void uncondBranch(ThreadID tid, Addr pc, void * &bp_history) override;
     void btbUpdate(ThreadID tid, Addr branch_addr,
@@ -64,7 +64,7 @@ class ZPerceptron: public BPredUnit{
     };
 
 
-    struct NBEntry {
+    struct Neuron {
         bool valid;
         bool probing{false};
         const uint32_t globalHistoryLen;
@@ -73,7 +73,7 @@ class ZPerceptron: public BPredUnit{
 
         std::vector<SignedSatCounter> weights;
 
-        explicit NBEntry (const ZPerceptronParams *params);
+        explicit Neuron (const ZPerceptronParams *params);
 
         int32_t predict(boost::dynamic_bitset<> &ghr);
 
@@ -83,18 +83,25 @@ class ZPerceptron: public BPredUnit{
 
         // 1 -> 1; 0 -> -1; bool to signed
         static int b2s(bool);
+
+        void dump() const;
     };
 
-    std::vector<NBEntry> table;
+    std::vector<Neuron> table;
 
     uint32_t computeIndex(Addr addr);
 
-    const uint32_t probeIndex = 310;
+    const uint32_t probeIndex = 89;
 
     uint64_t predictionID{1};
 
     uint64_t InvalidPredictionID = 0;
 
+    void dumpParameters() const;
+
+    void tryDump();
+
+    Tick nextDumpTick{0};
 };
 
 #endif
