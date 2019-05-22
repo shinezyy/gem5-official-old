@@ -196,7 +196,7 @@ void ZPerceptron::Neuron::fit(BPHistory *bp_history, bool taken) {
 ZPerceptron::Neuron::Neuron(const ZPerceptronParams *params)
          : globalHistoryLen(params->globalHistoryLen),
          localHistory(params->localHistoryLen),
-         weights(globalHistoryLen, SignedSatCounter(params->ctrBits, 0)),
+         weights(globalHistoryLen + 1, SignedSatCounter(params->ctrBits, 0)),
          theta(static_cast<int32_t>(1.93 * globalHistoryLen + 14.0))
 
 {

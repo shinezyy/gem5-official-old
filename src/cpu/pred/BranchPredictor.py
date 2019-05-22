@@ -193,4 +193,24 @@ class ZPerceptron(BranchPredictor):
     lamda               = Param.Unsigned(1, "Learning rate")
     # thresholdCounterBit = Param.Unsigned(0, "Bits used to store TC")
 
+class SNN(BranchPredictor):
+    type = 'SNN'
+    cxx_class = 'SNN'
+    cxx_header = "cpu/pred/snn.hh"
+
+    tableSize = Param.Unsigned(256, "Size of global Perdictor")
+    localHistoryLen = Param.Unsigned(1, "local history length")
+    ctrBits = Param.Unsigned(8, "width of saturating counter")
+
+    denseGlobalHistoryLen = Param.Unsigned(16, "global history length")
+    sparseGHSegLen = Param.Unsigned(8,
+            "sparse global history length per segment")
+    sparseGHNSegs = Param.Unsigned(8,
+            "number of sparse global history segments")
+    activeTerm = Param.Unsigned(16, "number of updates to observe")
+
+    pseudoTaggingBit    = Param.Unsigned(0, "Numeber of pseudo-tagging bits")
+    lamda               = Param.Unsigned(1, "Learning rate")
+    # thresholdCounterBit = Param.Unsigned(0, "Bits used to store TC")
+
 
