@@ -46,18 +46,20 @@ class SNN: public BPredUnit{
         bool predTaken;
         const uint64_t predictionID;
         const int32_t predictionValue;
+        const int32_t shadowPredVal;
 
         explicit BPHistory(boost::dynamic_bitset<> &ghr,
                            boost::dynamic_bitset<> local_history,
                            uint32_t tableIndex,
                            bool taken, uint64_t id,
-                           int32_t val)
+                           int32_t val, int32_t shadow_val)
                 : globalHistory(ghr),
                   localHistory(std::move(local_history)),
                   tableIndex(tableIndex),
                   predTaken(taken),
                   predictionID(id),
-                  predictionValue(val)
+                  predictionValue(val),
+                  shadowPredVal(shadow_val)
         {}
 
         ~BPHistory() = default;
@@ -65,11 +67,18 @@ class SNN: public BPredUnit{
 
 
     struct Neuron {
+        enum BlockType{
+            InvalidBlock = 0,
+            convBlock,
+            maxBlock,
+            NumBlockTypes
+        };
 
         struct SparseSeg {
-            bool valid;
+            int blockType;
             uint32_t ptr;
             SignedSatCounter weight;
+            boost::dynamic_bitset<> convKernel;
         };
 
         bool valid;
@@ -90,13 +99,20 @@ class SNN: public BPredUnit{
 
         std::vector<SparseSeg> sparseSegs;
 
+        std::vector<SignedSatCounter> shadowWeights;
+
         explicit Neuron (const SNNParams *params);
 
         int32_t predict(boost::dynamic_bitset<> &ghr);
 
+        int32_t shadowPredict(boost::dynamic_bitset<> &ghr);
+
         void fit(BPHistory *bp_history, bool taken);
 
+        void shadowFit(BPHistory *bp_history, bool taken);
+
         int32_t theta;
+        int32_t shadowTheta;
 
         // 1 -> 1; 0 -> -1; bool to signed
         static int b2s(bool);
@@ -108,7 +124,7 @@ class SNN: public BPredUnit{
 
     uint32_t computeIndex(Addr addr);
 
-    const uint32_t probeIndex = 89;
+    const uint32_t probeIndex = 7;
 
     uint64_t predictionID{1};
 

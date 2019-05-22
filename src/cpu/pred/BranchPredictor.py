@@ -203,11 +203,11 @@ class SNN(BranchPredictor):
     ctrBits = Param.Unsigned(8, "width of saturating counter")
 
     denseGlobalHistoryLen = Param.Unsigned(16, "global history length")
-    sparseGHSegLen = Param.Unsigned(8,
+    sparseGHSegLen = Param.Unsigned(6,
             "sparse global history length per segment")
     sparseGHNSegs = Param.Unsigned(8,
             "number of sparse global history segments")
-    activeTerm = Param.Unsigned(16, "number of updates to observe")
+    activeTerm = Param.Unsigned(50, "number of updates to observe")
 
     pseudoTaggingBit    = Param.Unsigned(0, "Numeber of pseudo-tagging bits")
     lamda               = Param.Unsigned(1, "Learning rate")
