@@ -78,7 +78,8 @@ class SNN: public BPredUnit{
             int blockType;
             uint32_t ptr;
             SignedSatCounter weight;
-            boost::dynamic_bitset<> convKernel;
+            std::vector<int8_t> convKernel;
+            SignedSatCounter recentMiss;
         };
 
         bool valid;
@@ -96,6 +97,8 @@ class SNN: public BPredUnit{
         std::vector<SignedSatCounter> activeWeights;
         uint32_t activeTerm;
         uint32_t activeTime;
+
+        const uint32_t convThreshold;
 
         std::vector<SparseSeg> sparseSegs;
 
@@ -116,6 +119,8 @@ class SNN: public BPredUnit{
 
         // 1 -> 1; 0 -> -1; bool to signed
         static int b2s(bool);
+
+        static int8_t sign(int);
 
         void dump() const;
     };

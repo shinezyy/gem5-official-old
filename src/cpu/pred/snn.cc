@@ -169,10 +169,15 @@ int32_t SNN::Neuron::predict(boost::dynamic_bitset<> &ghr)
 //        uint32_t ptr = activeStart + i;
 //        sum += b2s(ghr[ptr]) * activeWeights[i].read();
 //    }
+    int cursor = denseGHLen;
     for (int i = 0; i < sparseGHNSegs; i++) {
-        uint32_t ptr = sparseSegs[i].ptr;
-        sum += b2s(ghr[ptr]) * sparseSegs[i].weight.read();
-        // if invalid, then weight is always 0
+        int post_conv = 0;
+        for (int j = 0; j < sparseGHSegLen; j++) {
+            post_conv +=
+                    b2s(ghr[cursor + j]) * b2s(sparseSegs[i].convKernel[j]);
+        }
+        cursor += sparseGHSegLen;
+        sum += post_conv * sparseSegs[i].weight.read();
     }
 
     if (probing) {
@@ -209,40 +214,69 @@ void SNN::Neuron::fit(BPHistory *bp_history, bool taken) {
     activeTime ++;
     if (activeTime >= activeTerm) {
         activeTime = 0;
+//        uint32_t max_index = 0;
+//        int max = abs(activeWeights.front().read());
+//        for (uint32_t i = 0; i < sparseGHSegLen; i++) {
+//            const auto & counter = activeWeights[i];
+//            if (abs(counter.read()) > max) {
+//                max = abs(counter.read());
+//                max_index = i;
+//            }
+//        }
+//        auto ptr = max_index + activeStart;
+
+        // find worst seg
+        auto worst = 0;
+        for (int i = 1; i < sparseGHNSegs; i++) {
+            if (sparseSegs[i].recentMiss.read() >
+                         sparseSegs[worst].recentMiss.read()) {
+                worst = i;
+            }
+        }
+        for (int i = 0; i < sparseGHNSegs; i++) {
+            sparseSegs[i].recentMiss.reset();
+        }
+
         auto &seg_to_update =
                 sparseSegs[(activeStart - denseGHLen) / sparseGHSegLen];
-        uint32_t max_index = 0;
-        int max = abs(activeWeights.front().read());
-        for (uint32_t i = 0; i < sparseGHSegLen; i++) {
-            const auto & counter = activeWeights[i];
-            if (abs(counter.read()) > max) {
-                max = abs(counter.read());
-                max_index = i;
+
+        auto new_seg = std::vector<int8_t>(sparseGHSegLen, 0);
+        // default new_seg[i] = 0;
+        for (int i = 0; i < sparseGHSegLen; i++) {
+            auto s = 0;
+            if (abs(activeWeights[i].read()) > convThreshold) {
+                s = sign(activeWeights[i].read());
             }
+            new_seg[i] = sign(s + seg_to_update.convKernel[i]);
         }
-        auto ptr = max_index + activeStart;
-        if (!seg_to_update.valid) {
-            seg_to_update.valid = true;
-            seg_to_update.weight.add(activeWeights[max_index].read());
-            seg_to_update.ptr = ptr;
-            theta += 2;
+
+        if (seg_to_update.blockType == InvalidBlock) {
+            seg_to_update.blockType = convBlock;
+//            seg_to_update.weight.add(activeWeights[max_index].read());
+            theta += static_cast<int>(3);
+            seg_to_update.ptr = 10000;
+            seg_to_update.convKernel = new_seg;
+            seg_to_update.weight.reset();
 
         } else {
-            if (seg_to_update.ptr == ptr) {
-                // do not update
-            } else {
-                seg_to_update.ptr = ptr;
+
+            int hamm_distance = 0, sum = 0;
+            for (int i = 0; i < sparseGHSegLen; i++) {
+                hamm_distance += abs(seg_to_update.convKernel[i] - new_seg[i]);
+                sum += abs(new_seg[i]);
+            }
+            if (hamm_distance > 4 || sum == 0) {
                 seg_to_update.weight.reset();
-                seg_to_update.weight.add(activeWeights[max_index].read());
             }
+            seg_to_update.convKernel = new_seg;
         }
 
-        if (activeStart !=
-            denseGHLen + sparseGHSegLen * (sparseGHNSegs - 1)) {
-            activeStart += sparseGHSegLen;
-        } else {
-            activeStart = denseGHLen;
+        if (probing) {
+            DPRINTFR(SNN, "Update conv filter for seg %d\n", activeStart);
+            dump();
         }
+
+        activeStart = denseGHLen + worst * sparseGHSegLen;
 
         for (auto & counter: activeWeights) {
             counter.reset();
@@ -265,10 +299,18 @@ void SNN::Neuron::fit(BPHistory *bp_history, bool taken) {
     for (int i = 0; i < denseGHLen; i++) {
         denseWeights[i].add(b2s(taken) * b2s(ghr[i]));
     }
+
+    int cursor = denseGHLen;
     for (int i = 0; i < sparseGHNSegs; i++) {
-        uint32_t ptr = sparseSegs[i].ptr;
-        sparseSegs[i].weight.add(
-                b2s(taken) * b2s(ghr[ptr]) * sparseSegs[i].valid);
+        int post_conv = 0;
+        for (int j = 0; j < sparseGHSegLen; j++) {
+            post_conv += b2s(ghr[cursor + j]) * sparseSegs[i].convKernel[j];
+        }
+        cursor += sparseGHSegLen;
+        if (sign(post_conv*sparseSegs[i].weight.read()) != b2s(taken)) {
+            sparseSegs[i].recentMiss.increment();
+        }
+        sparseSegs[i].weight.add(b2s(taken) * sign(post_conv));
     }
 
     if (probing && Debug::SNN) {
@@ -309,12 +351,15 @@ SNN::Neuron::Neuron(const SNNParams *params)
           activeWeights(sparseGHSegLen, SignedSatCounter(params->ctrBits, 0)),
           activeTerm(params->activeTerm),
           activeTime(0),
+          convThreshold(params->convThreshold),
           sparseSegs(sparseGHNSegs,
-                     {false, 0, SignedSatCounter(params->ctrBits, 0)}),
+                     {InvalidBlock, 0,
+                      SignedSatCounter(params->ctrBits, 0),
+                      std::vector<int8_t>(sparseGHSegLen, 0),
+                      SignedSatCounter(params->ctrBits, 0)}),
           shadowWeights(sparseGHNSegs * sparseGHSegLen,
                         SignedSatCounter(params->ctrBits, 0)),
-          theta(static_cast<int32_t>(
-                        1.93 * denseGHLen + 14.0)),
+          theta(static_cast<int32_t>(3)),
           shadowTheta(static_cast<int32_t>(1.93 * (
                   denseGHLen + sparseGHNSegs * sparseGHSegLen) + 14.0))
 {
@@ -344,17 +389,30 @@ void SNN::Neuron::dump() const{
             printf("%4d", w.read());
         }
     }
-    DPRINTFR(PrcpDump, "\n");
+    DPRINTFR(PrcpDump, " theta = %d\n", theta);
 
 
+//    for (const auto &w: sparseSegs) {
+//        if (Debug::PrcpDump) {
+//            printf("%*s%4d* %d* %4d", 4*(sparseGHSegLen-2)-5, "",
+//                   w.ptr, (w.ptr-denseGHLen) % sparseGHSegLen,
+//                   w.weight.read());
+//        }
+//    }
     for (const auto &w: sparseSegs) {
         if (Debug::PrcpDump) {
-            printf("%*s%4d* %d* %4d", 4*(sparseGHSegLen-2)-5, "",
-                   w.ptr, (w.ptr-denseGHLen) % sparseGHSegLen,
-                   w.weight.read());
+            printf("%*s", 2*sparseGHSegLen-8, "");
         }
+        for (int j = 0; j < sparseGHSegLen; j++) {
+            printf("%2d", w.convKernel[j]);
+        }
+        printf("%4d %2d|", w.weight.read(), w.recentMiss.read());
     }
     DPRINTFR(PrcpDump, "\n");
+}
+
+int8_t SNN::Neuron::sign(int x) {
+    return (x > 0) - (x < 0);
 }
 
 

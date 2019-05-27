@@ -1,0 +1,8 @@
+astar
+h264ref
+gcc
+gamess
+gobmk
+libquantum
+sjeng
+povray

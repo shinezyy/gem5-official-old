@@ -85,3 +85,7 @@ def addO3Options(parser):
     parser.add_option("--use-zperceptron",
             action='store_true',
             help='Use zperceptron as branch predictor')
+
+    parser.add_option("--use-snn",
+            action='store_true',
+            help='Use snn as branch predictor')

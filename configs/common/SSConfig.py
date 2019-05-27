@@ -28,6 +28,8 @@ def modifyO3CPUConfig(options, cpu):
         cpu.branchPred = NBBP()
     if options.use_zperceptron:
         cpu.branchPred = ZPerceptron()
+    if options.use_snn:
+        cpu.branchPred = SNN()
 
 
     if options.bp_size:
