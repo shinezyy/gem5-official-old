@@ -39,6 +39,9 @@ def template FloatExecute {{
     {
         Fault fault = NoFault;
 
+        bool rmm_demand = false;
+        bool rmm_resolved = false;
+
         %(op_decl)s;
         %(op_rd)s;
         if (fault == NoFault) {
@@ -57,7 +60,8 @@ def template FloatExecute {{
                 break;
             case 0x4:
                 // Round to nearest, ties to max magnitude not implemented
-                fault = make_shared<IllegalFrmFault>(ROUND_MODE, machInst);
+                // fault = make_shared<IllegalFrmFault>(ROUND_MODE, machInst);
+                rmm_demand = true;
                 break;
             case 0x7: {
                 uint8_t frm = xc->readMiscReg(MISCREG_FRM);
@@ -94,6 +98,9 @@ def template FloatExecute {{
                 MiscReg FFLAGS = xc->readMiscReg(MISCREG_FFLAGS);
                 std::feclearexcept(FE_ALL_EXCEPT);
                 %(code)s;
+                if (rmm_demand && !rmm_resolved) {
+                    fault = make_shared<IllegalFrmFault>(ROUND_MODE, machInst);
+                }
                 if (std::fetestexcept(FE_INEXACT)) {
                     FFLAGS |= FloatInexact;
                 }
