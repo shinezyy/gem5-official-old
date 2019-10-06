@@ -152,6 +152,15 @@ def addSpec2006Options(parser):
             action="store_true",
             help="use spec 2006 benchmarks as workloads"
             )
+    parser.add_option("--spec-2017-bench",
+            action="store_true",
+            help="use spec 2017 benchmarks as workloads"
+            )
+    parser.add_option("--spec-size",
+            action="store",
+            choices=['ref', 'train', 'test'],
+            help="spec input size for 2017"
+            )
 
 
 # Add common options that assume a non-NULL ISA.

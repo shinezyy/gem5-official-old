@@ -1,0 +1,43 @@
+
+# 503.bwaves_r test
+bwaves_r_base.rv64g-gcc-9-64 bwaves_1 < bwaves_1.in > bwaves_1.out 2>> bwaves_1.err
+bwaves_r_base.rv64g-gcc-9-64 bwaves_2 < bwaves_2.in > bwaves_2.out 2>> bwaves_2.err
+
+# 507.cactuBSSN_r test
+cactusBSSN_r_base.rv64g-gcc-9-64 spec_test.par   > spec_test.out 2>> spec_test.err
+
+# 508.namd_r test
+namd_r_base.rv64g-gcc-9-64 --input apoa1.input --iterations 1 --output apoa1.test.output > namd.out 2>> namd.err
+
+# 510.parest_r test
+parest_r_base.rv64g-gcc-9-64 test.prm > test.out 2>> test.err
+
+# 511.povray_r test
+povray_r_base.rv64g-gcc-9-64 SPEC-benchmark-test.ini > SPEC-benchmark-test.stdout 2>> SPEC-benchmark-test.stderr
+
+# 519.lbm_r test
+lbm_r_base.rv64g-gcc-9-64 20 reference.dat 0 1 100_100_130_cf_a.of > lbm.out 2>> lbm.err
+
+# 521.wrf_r test
+wrf_r_base.rv64g-gcc-9-64 > rsl.out.0000 2>> wrf.err
+
+# 526.blender_r test
+blender_r_base.rv64g-gcc-9-64 cube.blend --render-output cube_ --threads 1 -b -F RAWTGA -s 1 -e 1 -a > cube.1.spec.out 2>> cube.1.spec.err
+
+# 527.cam4_r test
+cam4_r_base.rv64g-gcc-9-64 > cam4_r_base.rv64g-gcc-9-64.txt 2>> cam4_r_base.rv64g-gcc-9-64.err
+
+# 538.imagick_r test
+imagick_r_base.rv64g-gcc-9-64 -limit disk 0 test_input.tga -shear 25 -resize 640x480 -negate -alpha Off test_output.tga > test_convert.out 2>> test_convert.err
+
+# 544.nab_r test
+nab_r_base.rv64g-gcc-9-64 hkrdenq 1930344093 1000 > hkrdenq.out 2>> hkrdenq.err
+
+# 549.fotonik3d_r test
+fotonik3d_r_base.rv64g-gcc-9-64 > fotonik3d_r.log 2>> fotonik3d_r.err
+
+# 554.roms_r test
+roms_r_base.rv64g-gcc-9-64 < ocean_benchmark0.in.x > ocean_benchmark0.log 2>> ocean_benchmark0.err
+
+# 997.specrand_fr test
+specrand_fr_base.rv64g-gcc-9-64 324342 24239 > rand.24239.out 2>> rand.24239.err

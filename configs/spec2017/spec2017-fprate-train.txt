@@ -1,0 +1,45 @@
+
+# 503.bwaves_r train
+bwaves_r_base.rv64g-gcc-9-64 bwaves_1 < bwaves_1.in > bwaves_1.out 2>> bwaves_1.err
+bwaves_r_base.rv64g-gcc-9-64 bwaves_2 < bwaves_2.in > bwaves_2.out 2>> bwaves_2.err
+
+# 507.cactuBSSN_r train
+cactusBSSN_r_base.rv64g-gcc-9-64 spec_train.par   > spec_train.out 2>> spec_train.err
+
+# 508.namd_r train
+namd_r_base.rv64g-gcc-9-64 --input apoa1.input --iterations 7 --output apoa1.train.output > namd.out 2>> namd.err
+
+# 510.parest_r train
+parest_r_base.rv64g-gcc-9-64 train.prm > train.out 2>> train.err
+
+# 511.povray_r train
+povray_r_base.rv64g-gcc-9-64 SPEC-benchmark-train.ini > SPEC-benchmark-train.stdout 2>> SPEC-benchmark-train.stderr
+
+# 519.lbm_r train
+lbm_r_base.rv64g-gcc-9-64 300 reference.dat 0 1 100_100_130_cf_b.of > lbm.out 2>> lbm.err
+
+# 521.wrf_r train
+wrf_r_base.rv64g-gcc-9-64 > rsl.out.0000 2>> wrf.err
+diffwrf_521_base.rv64g-gcc-9-64 wrfout_d01_2000-01-24_14_00_00 /home/auser/spec2017/benchspec/CPU/521.wrf_r/data/train/compare/wrf_reference_01 > diffwrf_output_01.txt 2>> diffwrf_01.err
+
+# 526.blender_r train
+blender_r_base.rv64g-gcc-9-64 sh5_reduced.blend --render-output sh5_reduced_ --threads 1 -b -F RAWTGA -s 234 -e 234 -a > sh5_reduced.234.spec.out 2>> sh5_reduced.234.spec.err
+
+# 527.cam4_r train
+cam4_r_base.rv64g-gcc-9-64 > cam4_r_base.rv64g-gcc-9-64.txt 2>> cam4_r_base.rv64g-gcc-9-64.err
+
+# 538.imagick_r train
+imagick_r_base.rv64g-gcc-9-64 -limit disk 0 train_input.tga -resize 320x240 -shear 31 -edge 140 -negate -flop -resize 900x900 -edge 10 train_output.tga > train_convert.out 2>> train_convert.err
+
+# 544.nab_r train
+nab_r_base.rv64g-gcc-9-64 aminos 391519156 1000 > aminos.out 2>> aminos.err
+nab_r_base.rv64g-gcc-9-64 gcn4dna 1850041461 300 > gcn4dna.out 2>> gcn4dna.err
+
+# 549.fotonik3d_r train
+fotonik3d_r_base.rv64g-gcc-9-64 > fotonik3d_r.log 2>> fotonik3d_r.err
+
+# 554.roms_r train
+roms_r_base.rv64g-gcc-9-64 < ocean_benchmark1.in.x > ocean_benchmark1.log 2>> ocean_benchmark1.err
+
+# 997.specrand_fr train
+specrand_fr_base.rv64g-gcc-9-64 1 11 > rand.11.out 2>> rand.11.err
