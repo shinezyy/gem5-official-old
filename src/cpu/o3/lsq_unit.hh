@@ -61,6 +61,11 @@
 #include "mem/packet.hh"
 #include "mem/port.hh"
 
+#if THE_ISA == RISCV_ISA
+#include "arch/riscv/faults.hh"
+
+#endif
+
 struct DerivO3CPUParams;
 
 /**
