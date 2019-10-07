@@ -1571,7 +1571,12 @@ decode QUADRANT default Unknown::unknown() {
                         Fd = (double)Rs1_uw;
                     }}, FloatCvtOp);
                     0x2: fcvt_d_l({{
-                        Fd = (double)Rs1_sd;
+                        if (!rmm_demand) {
+                            Fd = (double)Rs1_sd;
+                        } else {
+                            rmm_resolved = true;
+                            Fd = round((double)Rs1_sd);
+                        }
                     }}, FloatCvtOp);
                     0x3: fcvt_d_lu({{
                         Fd = (double)Rs1;
