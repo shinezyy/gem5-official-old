@@ -14,11 +14,11 @@ import common as c
 
 # Please set to the directory where gem5-generated bbvs stored and
 # ensure that you have performed simpoint clustering on them
-simpoint_profile_dir = 'deadbeaf'
+simpoint_profile_dir = '/home/zyy/gem5-results/spec2017_simpoint_profile/'
 assert simpoint_profile_dir != 'deadbeaf'
 
 # Please set to the directory where to store gem5-generated checkpoints
-outdir = 'deadbeaf'
+outdir = '/home/zyy/gem5-results/spec2017_simpoint_cpts/'
 assert outdir != 'deadbeaf'
 
 
@@ -29,25 +29,27 @@ def take_cpt_for_benchmark(benchmark, simpoint_file, weight_file, outdir_b):
     interval = 200*10**6
     warmup = 20*10**6
 
-    exec_dir = c.gem5_exec()
+    exec_dir = pjoin(c.gem5_exec('2017'), benchmark)
     os.chdir(exec_dir)
 
     options = [
             '--outdir=' + outdir_b,
-            pjoin(gem5_dir, 'configs/spec2006/se_spec06.py'),
-            '--spec-2006-bench',
+            pjoin(gem5_dir, 'configs/spec2017/se_spec17.py'),
+            '--spec-2017-bench',
             '-b',
             '{}'.format(benchmark),
             '--benchmark-stdout={}/out'.format(outdir_b),
             '--benchmark-stderr={}/err'.format(outdir_b),
             '--cpu-type=AtomicSimpleCPU',
-            '--fastmem',
-            '--mem-size=4GB',
+            '--mem-type=SimpleMemory',
+            '--mem-size=16GB',
             '--take-simpoint-checkpoint={},{},{},{}'.format(
-                simpoint_file, weight_file, interval, warmup)
+                simpoint_file, weight_file, interval, warmup),
+            '--arch=RISCV',
+            '--spec-size=ref',
             ]
     print(options)
-    gem5 = sh.Command(pjoin(c.gem5_build(), 'gem5.opt'))
+    gem5 = sh.Command(pjoin(c.gem5_build('RISCV'), 'gem5.opt'))
     # sys.exit(0)
     gem5(
             _out=pjoin(outdir_b, 'gem5_out.txt'),
@@ -71,7 +73,7 @@ def run(benchmark):
     if profiled:
         print('simpoint weight file found in {},'.format(simpoint_dir_b),
                 'is going take simpoint cpt')
-        c.avoid_repeated(take_cpt_for_benchmark, outdir_b,
+        c.avoid_repeated(take_cpt_for_benchmark, outdir_b, None,
                 benchmark, simpoint_file, weight_file, outdir_b)
     else:
         print('simpoint weight file not found in {}, abort'.format(
@@ -83,7 +85,7 @@ def main():
 
     benchmarks = []
 
-    with open('./all_function_spec.txt') as f:
+    with open('./all_function_spec2017.txt') as f:
         for line in f:
             benchmarks.append(line.strip())
 

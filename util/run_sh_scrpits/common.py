@@ -3,7 +3,7 @@ import sh
 from os.path import join as pjoin
 
 
-def avoid_repeated(func, outdir, *args, **kwargs):
+def avoid_repeated(func, outdir, binary=None, *args, **kwargs):
     func_name = func.__name__
 
     running_lock_name = 'running-{}'.format(func_name)
@@ -26,9 +26,15 @@ def avoid_repeated(func, outdir, *args, **kwargs):
     script_ts_file = pjoin(script_dir, ts_name)
     if not os.path.isfile(script_ts_file):
         sh.touch(script_ts_file)
-    script_ts = os.path.getmtime(script_ts_file)
 
-    if out_ts < script_ts:
+    newest = os.path.getmtime(script_ts_file)
+
+    if not binary is None:
+        binary_ts = os.path.getmtime(binary)
+        newest = max(binary_ts, newest)
+
+
+    if out_ts < newest:
         try:
             func(*args, **kwargs)
             sh.touch(out_ts_file)
@@ -52,13 +58,20 @@ def gem5_build(arch):
     return pjoin(gem5_home(), 'build/{}'.format(arch))
 
 
-def gem5_exec():
-    return os.environ['gem5_run_dir']
+def gem5_exec(spec_version = '2006'):
+    if spec_version == '2006':
+        return os.environ['gem5_run_dir']
+    elif spec_version == '2017':
+        return os.environ['spec2017_run_dir']
+    return None
 
 
 def gem5_cpt_dir(arch):
     cpt_dirs = {
             'ARM': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-arm-gcc-4.8',
-            'RISCV': '/ramdisk/zyy/gem5_run/spec-simpoint-cpt-riscv-gcc-8.2',
+            'RISCV': '/home/zyy/spec-simpoint-cpt-riscv-gcc-8.2',
             }
     return cpt_dirs[arch]
+
+stats_base_dir = '/home/zyy/gem5-results'
+

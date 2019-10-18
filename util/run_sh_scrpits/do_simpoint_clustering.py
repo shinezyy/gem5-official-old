@@ -11,12 +11,14 @@ import common as c
 
 
 # Please set to the directory where gem5-generated bbvs stored
-simpoint_profile_dir = 'deadbeaf'
+simpoint_profile_dir = '/home/zyy/gem5-results/spec2017_simpoint_profile/'
+simpoints_all = simpoint_profile_dir
 assert simpoint_profile_dir != 'deadbeaf'
 
 def get_spec():
     x = []
-    with open('./all_function_spec.txt') as f:
+    with open('./all_function_spec2017.txt') as f:
+    # with open('./tmp.txt') as f:
         for line in f:
             if not line.startswith('#'):
                 x.append(line.lstrip('#').strip('\n'))
@@ -48,17 +50,23 @@ def choose_weights(benchmark):
 
         sort_by_weights = sorted(iter(weights_dict.items()),
                 key=operator.itemgetter(1), reverse=True)
-        max_list.append(sort_by_weights[0])
+        print(sort_by_weights)
+        l = min(len(sort_by_weights), 3)
+        entry = ((*sort_by_weights[:l]), sum([x for _, x in sort_by_weights[:l]]))
+        print(entry)
+        max_list.append(entry)
 
-    max_list = sorted(max_list, key=operator.itemgetter(1), reverse=True)
+    max_list = sorted(max_list, key=operator.itemgetter(3), reverse=True)
     print(max_list)
-
-    max_of_max = max_list[0]
+    chosen = max_list[0][:-1]
+    print(chosen)
 
     with open('simpoints-final', 'w') as sf:
-        print(max_of_max[0], 0, file=sf)
+        for i, pair in enumerate(chosen):
+            sf.write(f'{pair[0]} {i}\n')
     with open('weights-final', 'w') as wf:
-        print(1, 0, file=wf)
+        for i, pair in enumerate(chosen):
+            wf.write(f'{pair[1]} {i}\n')
 
 
 
@@ -98,11 +106,11 @@ def cluster_and_choose(benchmark):
 
         print('done file found in {}, is to perform clustering'.format(
             benchmark_dir))
-        c.avoid_repeated(cluster, benchmark_dir, benchmark)
+        c.avoid_repeated(cluster, benchmark_dir, None, benchmark)
 
         print('clustered, is to choosing according to weights for {}'.format(
             benchmark_dir))
-        c.avoid_repeated(choose_weights, benchmark_dir, benchmark)
+        c.avoid_repeated(choose_weights, benchmark_dir, None, benchmark)
 
     else:
         print('done file found in {}, abort'.format(
