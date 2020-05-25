@@ -47,6 +47,7 @@
 #include <functional>
 #include <string>
 
+#include "base/cast.hh"
 #include "mem/tport.hh"
 #include "sim/sim_object.hh"
 
@@ -105,7 +106,11 @@ class IntMasterPort : public QueuedMasterPort
     Tick latency;
 
     typedef std::function<void(PacketPtr)> OnCompletionFunc;
-    OnCompletionFunc onCompletion = nullptr;
+    struct OnCompletion : public Packet::SenderState
+    {
+        OnCompletionFunc func;
+        OnCompletion(OnCompletionFunc _func) : func(_func) {}
+    };
     // If nothing extra needs to happen, just clean up the packet.
     static void defaultOnCompletion(PacketPtr pkt) { delete pkt; }
 
@@ -122,8 +127,9 @@ class IntMasterPort : public QueuedMasterPort
     recvTimingResp(PacketPtr pkt) override
     {
         assert(pkt->isResponse());
-        onCompletion(pkt);
-        onCompletion = nullptr;
+        auto *oc = safe_cast<OnCompletion *>(pkt->popSenderState());
+        oc->func(pkt);
+        delete oc;
         return true;
     }
 
@@ -132,7 +138,7 @@ class IntMasterPort : public QueuedMasterPort
             OnCompletionFunc func=defaultOnCompletion)
     {
         if (timing) {
-            onCompletion = func;
+            pkt->pushSenderState(new OnCompletion(func));
             schedTimingReq(pkt, curTick() + latency);
             // The target handles cleaning up the packet in timing mode.
         } else {

@@ -85,10 +85,20 @@ while( ! $found && ($line = <INFILE>) ) {
       # if( $checkpointing == 0 ) {
       #   print FILE "/sbin/m5 switchcpu\n";
       # }
-      print FILE "/sbin/m5 dumpstats\n";
-      # print FILE "/sbin/m5 resetstats\n";
-      print FILE "LD_PRELOAD='/parsec-libs/lib/libc.so.6' ./$bench $tokens[$i]\n";
-      print FILE "/sbin/m5 dumpstats\n";
+      #print FILE "/sbin/m5 dumpstats\n";
+      print FILE "/sbin/m5 resetstats\n";
+      # print FILE "/sbin/m5 checkpoint; ";
+      if( $bench eq "vips" ) {
+        print FILE "LD_PRELOAD='/parsec-libs/lib/libc.so.6' ";
+      }
+      print FILE "./$bench $tokens[$i]";
+
+      #print FILE "; /sbin/m5 dumpstats; ";
+      #print FILE "echo \"Done :D\"; ";
+      #print FILE "/sbin/m5 exit; ";
+      #print FILE "/sbin/m5 exit;";
+
+      print FILE "\n/sbin/m5 dumpstats\n";
       print FILE "echo \"Done :D\"\n";
       print FILE "/sbin/m5 exit\n";
       print FILE "/sbin/m5 exit\n";
