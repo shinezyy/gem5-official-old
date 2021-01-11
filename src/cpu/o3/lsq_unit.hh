@@ -753,14 +753,17 @@ LSQUnit<Impl>::read(LSQRequest *req, int load_idx)
             // Check if the store data is within the lower and upper bounds of
             // addresses that the request needs.
             auto req_s = req->mainRequest()->getVaddr();
-            auto req_e = req_s + req->mainRequest()->getSize();
+            auto req_e = req_s - 1 + req->mainRequest()->getSize();
             auto st_s = store_it->instruction()->effAddr;
-            auto st_e = st_s + store_size;
+            auto st_e = st_s - 1 + store_size;
 
             bool store_has_lower_limit = req_s >= st_s;
-            bool store_has_upper_limit = req_e <= st_e;
-            bool lower_load_has_store_part = req_s < st_e;
-            bool upper_load_has_store_part = req_e > st_s;
+            // bool store_has_upper_limit = req_e <= st_e;
+            bool store_has_upper_limit =
+                req_s - store_size <= st_s - req->mainRequest()->getSize();
+
+            bool lower_load_has_store_part = req_s <= st_e;
+            bool upper_load_has_store_part = req_e >= st_s;
 
             auto coverage = AddrRangeCoverage::NoAddrRangeCoverage;
 
